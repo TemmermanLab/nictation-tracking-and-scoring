@@ -33,7 +33,7 @@ def find_centerline(bw, method = 'ridgeline', debug = False):
     bw = cv2.dilate(bw.astype('uint8'), strel)
     bw = cv2.erode(bw, strel, borderType = cv2.BORDER_CONSTANT, 
                    borderValue = 0)
-    
+
     if method == 'ridgeline':
         N = 50
         # find the two ends

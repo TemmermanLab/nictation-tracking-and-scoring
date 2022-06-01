@@ -12,9 +12,12 @@ Created on Wed Oct 13 20:56:56 2021
     -frame width in fix_centerlines should depend on image scale and worm type
     -summary video annotations should be scaled according to the size of the
      output frames
-    -stitch together tracks by areal overlap insteal of centerline distance
+    -stitch together tracks by areal overlap instead of centerline distance
     -the code in show segmentation and find worms is largely redundant
-    -there is a size change threshold but it is not used
+    -there is a size change threshold but it is not; it would be useful for
+     non-nictation tracking though as those worms will not change much in size
+    -change how centerlines are structured internally (squeeze extra
+     dimension, it should be frame, worm, [xs,ys])
 
 @author: PDMcClanahan
 """
@@ -48,7 +51,6 @@ import centerline_module as cm
 class Tracker:
     
     num_vids = 0
-    centerline_method = 'ridgeline'
     
     tshooting_outputs = [1]
     
@@ -72,6 +74,7 @@ class Tracker:
     print('WARNING: Using C. elegans metaparameters')
     
     metaparameters = {
+        'centerline_method' : 'ridgeline',
         'centerline_npts' : 50,
         'max_centerline_length' : 268,
         'max_centerline_angle' : 45,
@@ -345,7 +348,7 @@ class Tracker:
         # set up loop, vars to hold centroid
         self.centroids_raw = []
         self.first_frames_raw = []
-        if self.centerline_method  != 'none':
+        if self.metaparameters['centerline_method']  != 'none':
             self.centerlines_raw = []
             self.centerline_flags_raw = []
             self.angles_end_1_raw = []
@@ -377,7 +380,8 @@ class Tracker:
             
             centroids_frame, centerlines_frame, centerline_flags_frame, \
                     angles_end_1_frame, angles_end_2_frame = \
-                    self.find_worms(img)
+                    self.find_worms(img, self.segmentation_method, self.metaparameters, self.parameters, 
+                                    self.model, self.device, self.scale_factor)
             
             self.stitch_centroids(centroids_frame, centerlines_frame,
                                   centerline_flags_frame, angles_end_1_frame,
@@ -447,26 +451,28 @@ class Tracker:
         return np.squeeze(stack)
         
     
-    def find_worms(self,img):
-        
+    @staticmethod
+    def find_worms(img, segmentation_method, metaparameters, parameters,
+                   background = None, model = None, device = None, 
+                   scale_factor = None, return_bw = False):
+        # debug, max_centerline_angle, max_centerline_length, k_sig, bw_thr, area_bnds, segmentation_method, model, device, scale_factor, background, edge_proximity_cutoff, centerline_method
         debug = False # for find_centerline, do not comment out or will crash
-        if self.debug: import pdb; pdb.set_trace()
         
-        max_angle = self.metaparameters['max_centerline_angle']
-        max_length = self.metaparameters['max_centerline_length']
         
-        k_size = (round(self.parameters['k_sig']*3)*2+1,
-                  round(self.parameters['k_sig']*3)*2+1)
-        k_sig = self.parameters['k_sig']
-        bw_thr = self.parameters['bw_thr']
-        area_bnds = self.parameters['area_bnds']
+        max_angle = metaparameters['max_centerline_angle']
+        max_length = metaparameters['max_centerline_length']
         
-        if self.segmentation_method == 'intensity':
+        k_size = (round(parameters['k_sig']*3)*2+1,
+                  round(parameters['k_sig']*3)*2+1)
+        k_sig = parameters['k_sig']
+        bw_thr = parameters['bw_thr']
+        area_bnds = parameters['area_bnds']
+        
+        if segmentation_method == 'intensity':
             diff = (np.abs(img.astype('int16') - \
-                           self.background.astype('int16'))).astype('uint8')
-        elif self.segmentation_method == 'mask_RCNN':
-            diff = mrcnn.segment_full_frame(img, self.model, self.device,
-                                            self.scale_factor)
+                           background.astype('int16'))).astype('uint8')
+        elif segmentation_method == 'mask_RCNN':
+            diff = mrcnn.segment_full_frame(img, model, device, scale_factor)
         
         smooth = cv2.GaussianBlur(diff,k_size,k_sig,cv2.BORDER_REPLICATE)
         thresh,bw = cv2.threshold(smooth,bw_thr,255,cv2.THRESH_BINARY)
@@ -478,6 +484,7 @@ class Tracker:
         cc_is = np.linspace(0,cc[0]-1,cc[0]).astype(int)
 
         # eliminate objects that are too big, too small, or touch the boundary
+        bw_ws = np.zeros(np.shape(bw),dtype = 'uint8')
         centroids = list()
         centerlines = list()
         centerline_flags = list()
@@ -490,22 +497,22 @@ class Tracker:
                 obj_inds_r = np.where(cc[1]==cc_i)[0]
                 obj_inds_c = np.where(cc[1]==cc_i)[1]
 
-                if np.min(obj_inds_r) <= self.metaparameters['edge_proximity_cutoff'] or np.min(obj_inds_c) <= self.metaparameters['edge_proximity_cutoff']:
+                if np.min(obj_inds_r) <= metaparameters['edge_proximity_cutoff'] or np.min(obj_inds_c) <= metaparameters['edge_proximity_cutoff']:
                     hits_edge = True
-                elif np.max(obj_inds_r) >= np.shape(cc[1])[0]-1-self.metaparameters['edge_proximity_cutoff'] or np.max(obj_inds_c) >= np.shape(cc[1])[1]-1-self.metaparameters['edge_proximity_cutoff']:
+                elif np.max(obj_inds_r) >= np.shape(cc[1])[0]-1-metaparameters['edge_proximity_cutoff'] or np.max(obj_inds_c) >= np.shape(cc[1])[1]-1-metaparameters['edge_proximity_cutoff']:
                     hits_edge = True
                     
                 if hits_edge is False:
                     centroids.append(copy.deepcopy(cc[3][cc_i]))
+                    bw_ws[np.where(cc_map==cc_i)] = 255
                     
                     # find the centerline
-                    if self.centerline_method != 'none':
+                    if metaparameters['centerline_method'] != 'none':
                         bw_w = copy.copy(cc[1][cc[2][cc_i,1]-1:cc[2][cc_i,1]-1+cc[2][cc_i,3]+2,cc[2][cc_i,0]-1:cc[2][cc_i,0]-1+cc[2][cc_i,2]+2])
                         bw_w[np.where(bw_w == cc_i)]=255
                         bw_w[np.where(bw_w!=255)]=0
                         centerline, angle_end_1, angle_end_2 = \
-                            cm.find_centerline(bw_w,self.centerline_method,
-                                               debug)
+                            cm.find_centerline(bw_w,metaparameters['centerline_method'], debug)
                         centerline = np.float32(centerline)
                         centerline_flag = cm.flag_bad_centerline(centerline,
                                                         max_length, max_angle)
@@ -519,9 +526,10 @@ class Tracker:
                         angles_end_2.append(angle_end_2)
                         
         # re-arrange centroids
-        
-        if self.centerline_method != 'none':
+        if metaparameters['centerline_method'] != 'none' and not return_bw:
             return centroids, centerlines, centerline_flags, angles_end_1, angles_end_2
+        elif metaparameters['centerline_method'] != 'none' and return_bw:
+            return centroids, centerlines, centerline_flags, angles_end_1, angles_end_2, bw_ws
         else:
             return centroids
     
@@ -549,7 +557,7 @@ class Tracker:
             for i in range(len(centroids_frame)):
                 self.centroids_raw.append([centroids_frame[i]])
                 self.first_frames_raw.append(int(f))
-                if self.centerline_method != 'none':
+                if self.metaparameters['centerline_method'] != 'none':
                     self.centerlines_raw.append([centerlines_frame[i]])
                     self.centerline_flags_raw.append([centerline_flags_frame[i]])
                     self.angles_end_1_raw.append([angles_end_1_frame[i]])
@@ -604,7 +612,7 @@ class Tracker:
             for i in range(len(pair_list)):
                 tracked_inds.append(pair_list[i][1])
                 self.centroids_raw[prev_obj_inds[pair_list[i][0]]].append(centroids_frame[pair_list[i][1]])
-                if self.centerline_method != 'none':
+                if self.metaparameters['centerline_method'] != 'none':
                     self.centerlines_raw[prev_obj_inds[pair_list[i][0]]].append(centerlines_frame[pair_list[i][1]])
                     self.centerline_flags_raw[prev_obj_inds[pair_list[i][0]]].append(centerline_flags_frame[pair_list[i][1]])
                     self.angles_end_1_raw[prev_obj_inds[pair_list[i][0]]].append(angles_end_1_frame[pair_list[i][1]])
@@ -615,7 +623,7 @@ class Tracker:
                 if i not in tracked_inds:
                     self.centroids_raw.append([centroids_frame[i]])
                     self.first_frames_raw.append(int(f))
-                    if self.centerline_method != 'none':
+                    if self.metaparameters['centerline_method'] != 'none':
                         self.centerlines_raw.append([centerlines_frame[i]])
                         self.centerline_flags_raw.append([centerline_flags_frame[i]])
                         self.angles_end_1_raw.append([angles_end_1_frame[i]])
@@ -1062,7 +1070,7 @@ class Tracker:
                     numbers.append(w)
                     centroids.append(
                         self.centroids[w][i-self.first_frames[w]])
-                    if self.centerline_method != 'none':
+                    if self.metaparameters['centerline_method'] != 'none':
                         centerlines.append(
                             self.centerlines[w][i-self.first_frames[w]])
                         centerlines_unfixed.append(
@@ -1091,7 +1099,7 @@ class Tracker:
                 img_save = cv2.putText(img_save,text,text_pos,f_face,f_scale,
                                        f_color,f_thickness,cv2.LINE_AA)
                 # cline
-                if self.centerline_method != 'none':
+                if self.metaparameters['centerline_method'] != 'none':
                     pts = np.int32(centerlines[w][-1])
                     pts = pts.reshape((-1,1,2))
                     pts_unfixed = np.int32(centerlines_unfixed[w][-1])

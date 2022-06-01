@@ -46,7 +46,7 @@ def parameter_GUI(trackers):
     v = 0
 
     # init outcome values
-    if trackers[v].tracking_method == 'intensity':
+    if trackers[v].segmentation_method == 'intensity':
         bkgnd = trackers[v].background
     f_width = 600
     f_height = int(np.round(600*(
