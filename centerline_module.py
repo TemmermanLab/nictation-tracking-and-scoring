@@ -87,6 +87,8 @@ def find_centerline(bw, method = 'ridgeline', debug = False):
         
         # smooth angles and call this 'curvature'
         sigma = int(np.round(0.0125*len(xs)))
+        if sigma == 0:
+            sigma = 1
         curvature = gaussian_filter1d(dangles_unwr, sigma = sigma, 
                                       mode = 'wrap')
         

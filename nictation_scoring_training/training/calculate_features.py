@@ -49,22 +49,14 @@ import os
 import pandas as pd
 import copy
 
-sys.path.append(r'C:\Users\Temmerman Lab\Dropbox\Temmerman_Lab\code\nictat'+\
-    r'ion\nictation_scoring_training\training')
-
-try:
-    sys.path.append(os.path.split(__file__)[0])
-except:
-    pass
+sys.path.append(r'C:\Users\Temmerman Lab\Dropbox\Temmerman_Lab\code\tracking-and-scoring-nictation\nictation_scoring_training\training')
+sys.path.append(r'C:\Users\Temmerman Lab\Dropbox\Temmerman_Lab\code\tracking-and-scoring-nictation')
 
 
-sys.path.append(
-    r'C:\Users\Temmerman Lab\Dropbox\Temmerman_Lab\code\nictation_20220523')
-sys.path.append(
-    r'C:\Users\Temmerman Lab\Dropbox\Temmerman_Lab\code\nictation_20220523\nictation_scoring_training\training')
 import nictation_features as nf
 import nict_scoring_functions as nsf
-import tracker_classes as trkr
+import tracker as trkr
+import data_management_module as dmm
 
 def calculate_features(vid_file):
     
@@ -74,15 +66,15 @@ def calculate_features(vid_file):
     path_f = 3
     
     # load centroids, first frames, centerlines, and centerline flags
-    cents, ffs  = trkr.Tracker.load_centroids_csv(
+    cents, ffs  = dmm.load_centroids_csv(
         os.path.splitext(vid_file)[0] + r'_tracking\centroids.csv')
     
-    clns, cln_flags = trkr.Tracker.load_centerlines_csv(
+    clns, cln_flags = dmm.load_centerlines_csv(
         os.path.splitext(vid_file)[0] + r'_tracking\centerlines')
 
     
     # load tracking parameters
-    params = trkr.Tracker.load_parameter_csv_stat(
+    params = dmm.load_parameter_csv(
         os.path.splitext(vid_file)[0] + r'_tracking\tracking_parameters.csv')
     
     
@@ -188,7 +180,7 @@ if __name__ == '__main__':
         
         vid_dir = r"C:\\Users\\Temmerman Lab\\Desktop\\Celegans_nictation_dataset"
         file_list = os.listdir(vid_dir)
-        for f in file_list[56:]:
+        for f in file_list[70:]:
             if f[-4:] == '.avi' and f[:-4]+'_tracking' in file_list:
                 calculate_features(vid_dir + '\\' + f)
         

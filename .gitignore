@@ -1,8 +1,11 @@
 *.exe
 *.pt
-*.ppt
+*.pptx
 *.png
 *.csv
 *.p
+*.avi
+*.bmp
+
 *build/
 *dist/
