@@ -76,9 +76,9 @@ class Tracker:
     metaparameters = {
         'centerline_method' : 'ridgeline',
         'centerline_npts' : 50,
-        'max_centerline_length' : 268,
+        'max_centerline_length' : 1152, # originally 268 pix
         'max_centerline_angle' : 45,
-        'edge_proximity_cutoff' : 10,
+        'edge_proximity_cutoff' : 10, # pix
         'deformable_model_scale' : 0.5,
         'summary_video_scale' : 1.0,
         'stitching_method' : 'overlap', # originally it was centroid distance
@@ -132,12 +132,12 @@ class Tracker:
             'human_checked' : False,
             'bkgnd_meth' : 'max_merge',
             'bkgnd_nframes' : 10,
-            'k_sig' : 1.5,
+            'k_sig' : 6.5, # um, default, close to original 1.5 pix
             'bw_thr' : 10,
-            'area_bnds' : (600,1500),
-            'd_thr' : 10,
+            'area_bnds' : (3700 , 16650), # sq um for C. elegans dauers
+            'd_thr' : 430, # um, based on 100 um
             'del_sz_thr' : '',
-            'um_per_pix' : '',
+            'um_per_pix' : 4.3, # default based on data in C. elegans dataset
             'min_f' : 300
             }
             #self.save_params_csv('tracking_parameters')
@@ -201,10 +201,18 @@ class Tracker:
     # creates images for display in parameter GUI
     def show_segmentation(self, f=0):
         
-        max_angle = self.metaparameters['max_centerline_angle']
-        max_length = self.metaparameters['max_centerline_length']
         
-        print(self.segmentation_method)
+        # convert parameters to pixels for practical use
+        k_sig = self.parameters['k_sig'] * (1/self.parameters['um_per_pix'])
+        k_size = (round(k_sig*3)*2+1,
+                  round(k_sig*3)*2+1)
+        area_bnds = np.array(self.parameters['area_bnds']) * \
+            (1/self.parameters['um_per_pix']**2)
+        max_angle = self.metaparameters['max_centerline_angle']
+        max_length = self.metaparameters['max_centerline_length'] * \
+            (1/self.parameters['um_per_pix'])
+        bw_thr = self.parameters['bw_thr']
+        
         
         # set up mask RCNN if needed
         if self.segmentation_method == 'mask_RCNN' and \
@@ -212,16 +220,11 @@ class Tracker:
             self.model, self.device = mrcnn.prepare_model(self.model_file)
             self.param_gui_f = -1 # tracks for which 'diff' was calculated
         
+        
         # read in frame f
         self.vid.set(cv2.CAP_PROP_POS_FRAMES, f)
         ret,img = self.vid.read(); img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         
-        # get parameters (makes code below more readable)
-        k_size = (round(self.parameters['k_sig']*3)*2+1,
-                  round(self.parameters['k_sig']*3)*2+1)
-        k_sig = self.parameters['k_sig']
-        bw_thr = self.parameters['bw_thr']
-        area_bnds = self.parameters['area_bnds']
         
         # make bw image
         if self.segmentation_method == 'intensity':
@@ -319,7 +322,8 @@ class Tracker:
      
         # show the distance threshold
         if self.parameters['d_thr'] is not None:
-            d_thr = self.parameters['d_thr']
+            d_thr = self.parameters['d_thr'] * \
+                (1/self.parameters['um_per_pix'])
             text = 'd='+str(d_thr)
             text_size = cv2.getTextSize(text, f_face, f_scale, f_thickness)[0]
             pt1 = [np.shape(img)[1]-offset,np.shape(img)[0]-offset]
@@ -459,14 +463,18 @@ class Tracker:
         debug = False # for find_centerline, do not comment out or will crash
         
         
+        # convert parameters to pixels for practical use
+        k_sig = parameters['k_sig'] * (1/parameters['um_per_pix'])
+        k_size = (round(k_sig*3)*2+1,
+                  round(k_sig*3)*2+1)
+        area_bnds = np.array(parameters['area_bnds']) * \
+            (1/parameters['um_per_pix']**2)
         max_angle = metaparameters['max_centerline_angle']
-        max_length = metaparameters['max_centerline_length']
-        
-        k_size = (round(parameters['k_sig']*3)*2+1,
-                  round(parameters['k_sig']*3)*2+1)
-        k_sig = parameters['k_sig']
+        max_length = metaparameters['max_centerline_length'] * \
+            (1/parameters['um_per_pix'])
         bw_thr = parameters['bw_thr']
-        area_bnds = parameters['area_bnds']
+        
+        
         
         if segmentation_method == 'intensity':
             diff = (np.abs(img.astype('int16') - \
@@ -511,15 +519,22 @@ class Tracker:
                         bw_w = copy.copy(cc[1][cc[2][cc_i,1]-1:cc[2][cc_i,1]-1+cc[2][cc_i,3]+2,cc[2][cc_i,0]-1:cc[2][cc_i,0]-1+cc[2][cc_i,2]+2])
                         bw_w[np.where(bw_w == cc_i)]=255
                         bw_w[np.where(bw_w!=255)]=0
-                        centerline, angle_end_1, angle_end_2 = \
-                            cm.find_centerline(bw_w,metaparameters['centerline_method'], debug)
-                        centerline = np.float32(centerline)
-                        centerline_flag = cm.flag_bad_centerline(centerline,
-                                                        max_length, max_angle)
-                        centerline[:,0] += cc[2][cc_i][0]
-                        centerline[:,1] += cc[2][cc_i][1]
-                        centerline = centerline[np.newaxis,...]
+                        
+                        try:
+                            centerline, angle_end_1, angle_end_2 = \
+                                cm.find_centerline(bw_w,metaparameters['centerline_method'], debug)
+                            centerline = np.float32(centerline)
+                            centerline_flag = cm.flag_bad_centerline(centerline,
+                                                            max_length, max_angle)
+                            centerline[:,0] += cc[2][cc_i][0]
+                            centerline[:,1] += cc[2][cc_i][1]
+                            centerline = centerline[np.newaxis,...]
+                        except:
+                            centerline = None
+                            centerline_flag = 1
+                            
                         centerlines.append(copy.copy(centerline))
+                        
                         centerline_flags.append(centerline_flag)
                         
                         angles_end_1.append(angle_end_1)
@@ -539,6 +554,9 @@ class Tracker:
     def stitch_centroids(self, centroids_frame, centerlines_frame, 
                          centerline_flags_frame, angles_end_1_frame, 
                          angles_end_2_frame, f):
+        
+        # convert d_thr to pixels
+        d_thr = self.parameters['d_thr'] + (1/self.parameters['um_per_pix'])
         
         # make a list of the indices of objects tracked in the previous frame
         # as well as their centroids
@@ -587,7 +605,7 @@ class Tracker:
             #if np.shape(d_mat)[0]>0 and np.shape(d_mat)[1]>0:
             while search:
                 min_dist = np.nanmin(d_mat)
-                if min_dist < self.parameters['d_thr']:
+                if min_dist < d_thr:
                     result = np.where(d_mat == np.nanmin(d_mat))  
                     pair_list.append((result[0][0],result[1][0]))
                     d_mat[result[0][0],:]=np.nan
@@ -660,8 +678,12 @@ class Tracker:
         the nearest non-flagged or fixed centerline to the bw image that
         resulted in the flagged centerline'''
         
+        k_sig = self.parameters['k_sig'] * (1/self.parameters['um_per_pix'])
+        k_size = (round(k_sig*3)*2+1,
+                  round(k_sig*3)*2+1)
         max_angle = self.metaparameters['max_centerline_angle']
-        max_length = self.metaparameters['max_centerline_length']
+        max_length = self.metaparameters['max_centerline_length'] * \
+            (1 / self.parameters['um_per_pix'])
         
         self.centerlines_unfixed = copy.deepcopy(self.centerlines)
         self.centerline_flags_unfixed = copy.deepcopy(self.centerline_flags)
@@ -763,8 +785,7 @@ class Tracker:
                         diff = mrcnn.segment_full_frame(img, self.model,
                                                         self.device,
                                                         self.scale_factor)
-                    smooth = cv2.GaussianBlur(diff,k_size,
-                                              self.parameters['k_sig'],
+                    smooth = cv2.GaussianBlur(diff,k_size, k_sig,
                                               cv2.BORDER_REPLICATE)
                     thresh,bw = cv2.threshold(smooth,
                             self.parameters['bw_thr'],255,cv2.THRESH_BINARY)
@@ -906,10 +927,6 @@ class Tracker:
         plt.show()
 
 
-
-
-            
-        
 
     def orient_head_tail(self):
         
