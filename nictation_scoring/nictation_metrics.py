@@ -3,7 +3,7 @@
 Created on Sat May 29 16:42:03 2021
 
 
-This file contains functions for calculating the following nictation metrics
+This module contains functions for calculating the following nictation metrics
 based on their definitions in Lee et al 2012. "nictation ratio was determined
 as the nictation time divided by the observation time" Lee et al 2012
 In methods: "To exclude dauers in quiescence, nictation was only evaluated
@@ -14,6 +14,15 @@ In methods: "To exclude dauers in quiescence, nictation was only evaluated
 2. average duration (of nictation bouts)
 
 3. initiation index (rate)
+
+
+Additionally, because average duration is likely to be scewed due to longer
+bouts being but off by tracking failures, a "stopping rate" is also 
+calculated.
+
+Issues and improvements:
+    
+    -
 
 
 @author: PDMcClanahan

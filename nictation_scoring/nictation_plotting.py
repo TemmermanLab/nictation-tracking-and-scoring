@@ -17,54 +17,6 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import seaborn as sns
 
-import csv
-
-
-def load_scores_csv(csv_path):
-    '''Loads the manual or automatic scores <csv_path> as a list of numpy 
-    arrays of int8 where each item is scores from one worm-track'''
-    scores = []
-    with open(csv_path) as csv_file:
-        csv_reader = csv.reader(csv_file, delimiter=',')
-        first_row = True
-        for row in csv_reader:
-            if first_row:
-                for w in row:
-                    scores.append([])
-                first_row = False
-            else:
-                for w in range(len(row)):
-                    if row[w] != '':
-                        scores[w].append(int(row[w]))
-        
-        for w in range(len(scores)):
-            scores[w] = np.array(scores[w],dtype = np.int8)
-                        
-    return scores        
-    
-
-    # with open(save_file_csv, mode='w',newline="") as csv_file:
-    #         #pdb.set_trace()
-    #         scores_writer = csv.writer(csv_file, delimiter=',', quotechar='"',
-    #                                    quoting=csv.QUOTE_MINIMAL)
-    #         # complicated because csv writer only writes rows
-    #         row = []
-    #         for ww in range(len(scores)): row.append('worm '+str(ww))
-    #         scores_writer.writerow(row)
-            
-    #         num_frames = []
-    #         for s in scores: num_frames.append(len(s))
-    #         num_r = np.max(num_frames)
-    #         for r in range(num_r):
-    #             row = []
-    #             for ww in range(len(scores)):
-    #                 if r < len(scores[ww]):
-    #                     row.append(scores[ww][r])
-    #                 else:
-    #                     row.append('')
-    #             scores_writer.writerow(row)
-
-
 
 testing = False
 
@@ -77,9 +29,8 @@ palette = np.array([[  255,   255,   255],   # white - no score
 
 
 # plots a heat map / gantt chart of dauer behavioral scores
-def plot_scores(scores, title = 'Manual Nictation Scores',  w_tick_start = 0, 
-                save_name = False):
-    
+def plot_scores(scores, title = 'Manual Nictation Scores',figsize = (5.3,5.3),w_tick_start = 0):
+    #import pdb; pdb.set_trace()
     if type(scores)==list:
         scores = np.flip(scores)
         scores_list = copy.deepcopy(scores)
@@ -94,21 +45,17 @@ def plot_scores(scores, title = 'Manual Nictation Scores',  w_tick_start = 0,
     scores2 = np.array(scores2,dtype = 'int8')
     RGB = palette[scores2]
     
-    fig, axes = plt.subplots()
-    im = axes.imshow(RGB, extent = [0,np.shape(scores)[1],-.5,
-                                    np.shape(scores)[0]],aspect = 3,
-                                    cmap='jet',interpolation = 'none')
-
+    fig, axes = plt.subplots(figsize=figsize)
+    im = axes.imshow(RGB, extent = [0,np.shape(scores)[1],-.5,np.shape(scores)[0]], aspect=70,cmap='jet',interpolation = 'none')
     axes.invert_yaxis()
     axes.set_xlabel('frame (5 fps)')
     axes.set_ylabel('worm track #')
-    yticks = np.arange(w_tick_start,np.shape(scores2)[0]+w_tick_start,
-                round((np.shape(scores2)[0]+w_tick_start-w_tick_start)/10))
+    yticks = np.arange(w_tick_start,np.shape(scores2)[0]+w_tick_start,round((np.shape(scores2)[0]+w_tick_start-w_tick_start)/10))
     yticks_pos = yticks - yticks[0]
     axes.set_yticklabels(yticks)
     axes.set_yticks(yticks_pos)
     axes.set_title(title)
-    #axes.set_aspect(50)
+    axes.set_aspect(50)
     
     patch0 = mpatches.Patch(color=palette[2]/255, label='quiescent')
     patch1 = mpatches.Patch(color=palette[3]/255, label='cruising')
@@ -118,16 +65,13 @@ def plot_scores(scores, title = 'Manual Nictation Scores',  w_tick_start = 0,
     
     all_handles = (patch0, patch1, patch2, patch3, patch4)
     
-    leg = axes.legend(handles=all_handles,frameon=False,loc='right')
+    leg = axes.legend(handles=all_handles,frameon=False,loc='lower right')
     axes.add_artist(leg)
     
-    if save_name:
-        plt.savefig(save_name)
     
-    
-    
+# USED
 def bar_count(dataframe):
-    data_num = dataframe['manual_behavior_label']
+    data_num = list(dataframe['manual_behavior_label'])
     data_str = []
     for wf in range(len(data_num)):
         # if data_num[wf] == -2:

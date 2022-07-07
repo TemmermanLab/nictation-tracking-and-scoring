@@ -532,6 +532,8 @@ class Tracker:
                         except:
                             centerline = None
                             centerline_flag = 1
+                            angle_end_1 = None
+                            angle_end_2 = None
                             
                         centerlines.append(copy.copy(centerline))
                         

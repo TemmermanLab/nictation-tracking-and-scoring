@@ -2,10 +2,12 @@
 """
 Created on Thu Apr 21 10:50:32 2022
 
-This module contains methods that calculate various features used to detect
-nictation based on tracking and video data. The features require tracking
-information from one or two frames, or in one case the raw video, to 
-calculate, and are ambiguous to the head / tail orientation of the worm.
+
+This module contains functions that calculate features used to detect nictation
+based on tracking and video data. Most features require tracking information
+from one or two frames, or in one case the raw video, to calculate. A few
+require <num_f> frames in the past or future, and return NaN otherwise. These
+are currently ambiguous to the head / tail orientation of the worm.
 
 
 This is based on the earlier indicator_functions.py
@@ -22,6 +24,9 @@ Issues and improvements:
      
     -it might be good to have a change in intensity and width feature as the
      worm is narrower-looking when it is nictating.
+     
+    -area might be a useful feature, but would have to be recorded during
+     tracking and probably normalized against a population median.
 
 
 @author: PDMcClanahan
@@ -130,6 +135,7 @@ def blur(vid, vid_f, w, f, centroid, centerline, um_per_pix, halfwidth):
     return cv2.Laplacian(crop, cv2.CV_64F).var()
 
 
+
 def bkgnd_sub_blur(vid, vid_f, w, f, centroid, centerline, um_per_pix, 
                         halfwidth, background):
     
@@ -164,6 +170,7 @@ def bkgnd_sub_blur(vid, vid_f, w, f, centroid, centerline, um_per_pix,
                   centroid[0]:(2*halfwidth+centroid[0])]
     
     return cv2.Laplacian(crop, cv2.CV_64F).var()
+
 
 
 def bkgnd_sub_ends_blur_diff(vid, vid_f, w, f, centerline, um_per_pix, 
@@ -214,6 +221,7 @@ def bkgnd_sub_ends_blur_diff(vid, vid_f, w, f, centerline, um_per_pix,
                   cv2.Laplacian(crop1, cv2.CV_64F).var())
 
 
+
 def total_curvature(centerline):
     '''total curvature - Sum of the angles at each segment in the worm 
     centerline'''
@@ -231,8 +239,6 @@ def total_curvature(centerline):
         2 * np.pi-dangles[np.where(dangles > np.pi)]
 
     return np.sum(dangles)
-
-
 
 
 
@@ -285,8 +291,6 @@ def lat_long_movement(centerline0, centerline1, um_per_pix):
 
 
 
-
-
 def centroid_path_length_past(w, f, centroids, um_per_pix, num_f):
     '''centroid path length in the past - Distance travelled by the centroids
     num_f frames in the past to the current frame'''
@@ -319,8 +323,6 @@ def centroid_path_length_fut(w, f, centroids, um_per_pix, num_f):
     return cp
 
 
-# path of head relative to tail - requires centerlines x frames in the past
-# and future
 
 def head_tail_path_bias(centerlines,w,f,num_f,um_per_pix):
     '''head / tail path - The absolute value of the difference between the 
@@ -348,8 +350,6 @@ def head_tail_path_bias(centerlines,w,f,num_f,um_per_pix):
 # not sure how to use this output yet - measure of convolutedness multiplied
 # by scale?
 
-
-        
 
 
 def angular_sweep(centerline0,centerline1,supp = True):
@@ -388,8 +388,6 @@ def angular_sweep(centerline0,centerline1,supp = True):
         
         return np.nan
     
-    
-
 
 
 def body_length(centerline,um_per_pix = 1):
@@ -402,7 +400,6 @@ def body_length(centerline,um_per_pix = 1):
         body_length = body_length + np.linalg.norm(
             centerline[p-1]-centerline[p])
     return body_length * um_per_pix
-
 
 
 
@@ -473,6 +470,7 @@ def PCA_metrics(w,f,centroids,offset = 5,um_per_pix = 1, show = False):
         ratio = np.nan; product= np.nan
         
     return ratio, product
+
 
 
 def diff_img_act(vid, centerlines, ffs):
