@@ -26,6 +26,9 @@ def find_centerline(bw, method = 'ridgeline', debug = False):
     points are resampled and returned along with the smoothed interior 
     angles at each end.'''
     
+    if debug:
+        import matplotlib.pyplot as plt
+    
     #bw = np.uint8(bw)
     
     # get rid of small holes
@@ -138,6 +141,7 @@ def find_centerline(bw, method = 'ridgeline', debug = False):
             plt.plot(xs[end_2],ys[end_2],'ko',markerfacecolor = 'w')
             # plt.xlim(-1,10)
             # plt.ylim(10,-1)
+            plt.axis('off')
             plt.show()
         
         

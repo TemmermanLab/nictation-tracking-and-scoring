@@ -193,29 +193,40 @@ try:
     #                                     vid_tracking_path + r'\centerlines')
     # create_vignettes(vid_name, vid_path, centroids, centerlines, first_frames)
     
-    vid_name = 'Ce_R3_48h.avi'
-    vid_path = 'C:\\Users\\Temmerman Lab\Desktop\\Celegans_nictation_dataset\\'
-    vid_tracking_path = 'Ce_R3_48h_tracking\\'
-    centroids_file = vid_path + vid_tracking_path + 'centroids.csv'
-    centroids, first_frames = tracker.Tracker.load_centroids_csv(
-                                                            centroids_file)
-    centerlines, flags = tracker.Tracker.load_centerlines_csv(vid_path +
-                                        vid_tracking_path + r'\centerlines')
-    create_vignettes(vid_name, vid_path, centroids, centerlines, first_frames)
+    # vid_name = 'Ce_R3_48h.avi'
+    # vid_path = 'C:\\Users\\Temmerman Lab\Desktop\\Celegans_nictation_dataset\\'
+    # vid_tracking_path = 'Ce_R3_48h_tracking\\'
+    # centroids_file = vid_path + vid_tracking_path + 'centroids.csv'
+    # centroids, first_frames = tracker.Tracker.load_centroids_csv(
+    #                                                         centroids_file)
+    # centerlines, flags = tracker.Tracker.load_centerlines_csv(vid_path +
+    #                                     vid_tracking_path + r'\centerlines')
+    # create_vignettes(vid_name, vid_path, centroids, centerlines, first_frames)
     
-    vid_name = 'Ce_R3_d06.avi'
-    vid_path = 'C:\\Users\\Temmerman Lab\Desktop\\Celegans_nictation_dataset\\'
-    vid_tracking_path = 'Ce_R3_d06_tracking\\'
-    centroids_file = vid_path + vid_tracking_path + 'centroids.csv'
-    centroids, first_frames = tracker.Tracker.load_centroids_csv(
-                                                            centroids_file)
-    centerlines, flags = tracker.Tracker.load_centerlines_csv(vid_path +
-                                        vid_tracking_path + r'\centerlines')
-    create_vignettes(vid_name, vid_path, centroids, centerlines, first_frames)
+    # vid_name = 'Ce_R3_d06.avi'
+    # vid_path = 'C:\\Users\\Temmerman Lab\Desktop\\Celegans_nictation_dataset\\'
+    # vid_tracking_path = 'Ce_R3_d06_tracking\\'
+    # centroids_file = vid_path + vid_tracking_path + 'centroids.csv'
+    # centroids, first_frames = tracker.Tracker.load_centroids_csv(
+    #                                                         centroids_file)
+    # centerlines, flags = tracker.Tracker.load_centerlines_csv(vid_path +
+    #                                     vid_tracking_path + r'\centerlines')
+    # create_vignettes(vid_name, vid_path, centroids, centerlines, first_frames)
     
-    vid_name = 'Ce_R3_d21.avi'
-    vid_path = 'C:\\Users\\Temmerman Lab\Desktop\\Celegans_nictation_dataset\\'
-    vid_tracking_path = 'Ce_R3_d21_tracking\\'
+    # vid_name = 'Ce_R3_d21.avi'
+    # vid_path = 'C:\\Users\\Temmerman Lab\Desktop\\Celegans_nictation_dataset\\'
+    # vid_tracking_path = 'Ce_R3_d21_tracking\\'
+    # centroids_file = vid_path + vid_tracking_path + 'centroids.csv'
+    # centroids, first_frames = tracker.Tracker.load_centroids_csv(
+    #                                                         centroids_file)
+    # centerlines, flags = tracker.Tracker.load_centerlines_csv(vid_path +
+    #                                     vid_tracking_path + r'\centerlines')
+    # create_vignettes(vid_name, vid_path, centroids, centerlines, first_frames)
+    
+    
+    vid_name = 'Sc_smell1_V2.avi'
+    vid_path = 'C://Users//Temmerman Lab//Desktop//Scarpocapsae_nictation_dataset'
+    vid_tracking_path = 'Sc_smell1_V2.avi_tracking\\'
     centroids_file = vid_path + vid_tracking_path + 'centroids.csv'
     centroids, first_frames = tracker.Tracker.load_centroids_csv(
                                                             centroids_file)

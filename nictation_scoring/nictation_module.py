@@ -388,8 +388,8 @@ def load_centroids_csv(centroids_file):
 def train_model(manual_score_file,feature_file,fps,scaling_method,model_type):
     
     # load training data
-    manual_score_file = data_dir + 'Ce_R2_d21_tracking//manual_nictation_scores.csv'
-    man_scores_lst = load_manual_scores_csv(manual_score_file)
+    # manual_score_file = data_dir + 'Ce_R2_d21_tracking//manual_nictation_scores.csv'
+    # man_scores_lst = load_manual_scores_csv(manual_score_file)
         
     # load features
     feature_file = data_dir + 'Ce_R2_d21_tracking//nictation_features.csv'
