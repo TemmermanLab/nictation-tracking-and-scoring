@@ -134,7 +134,118 @@ def evaluate_models_accuracy(vid_file, **kwargs):
     
     return acc, times
                 # heatmap_acc[mt,2*sm:2*sm+2] = [train_acc,test_acc]
+
+
+def combine_and_prepare_man_scores_and_features(vid_file, score_file = None):
+    '''Loads manual scores and features from the same video and combines and
+    nan-masks them in preparation for training a classifier'''
     
+    # load manual scores
+    if score_file is None:
+        man_scores_lst = load_manual_scores_csv(
+            os.path.splitext(vid_file)[0] + \
+            r'_tracking/manual_nictation_scores.csv')
+    else:
+        man_scores_lst = load_manual_scores_csv(score_file)
+    
+    # load features
+    df = pd.read_csv(os.path.splitext(vid_file)[0] + 
+                      r'_tracking\nictation_features.csv')
+    
+    # add manual scores to df
+    man_scores = []
+    for scr_w in man_scores_lst:
+        man_scores += list(scr_w)
+    df.insert(2,'manual_behavior_label',man_scores)
+
+    # remove NaN values
+    df_masked = nan_inf_mask_dataframe(df)
+    
+    return df_masked
+
+
+def evaluate_models_accuracy_2(vid_file_train, vid_file_test, **kwargs):
+    '''Same as evaluate_models_accuracy except that accuracy is also evaluated
+    on a totally separate video as a test of the robustness of the classifier.
+    "evaluate_models_accuracy" trains and tests several types of machine
+    learning algorithms based on the features calculated from and manual 
+    scores provided for <vid_file> split 75 / 25 training / testing.  The
+    resulting accuracies of the different models with different types of 
+    feature normalization are returned as well as the training and inference
+    times.'''   
+    
+    trials = kwargs.get('trials',1)
+    
+    model_types = kwargs.get('model_types',['logistic regression','decision tree',
+                   'k nearest neighbors', 'linear discriminant analysis',
+                   'Gaussian naive Bayes', 'support vector machine', 
+                   'random forest', 'neural network'])
+    
+    scaling_methods = kwargs.get('scaling_methods',['none','min max',
+                        'variance','Gaussian','whiten'])
+    
+    rand_split = kwargs.get('rand_split',False)
+    
+    
+    # load features and manual scores for the training and test videos
+    df_train = combine_and_prepare_man_scores_and_features(vid_file_train)
+    df_test = combine_and_prepare_man_scores_and_features(vid_file_test)
+    
+    # # plot the abundance of worm-frames with each behavior label
+    # nict_plot.bar_count(df_train)
+    
+    acc = np.empty((len(scaling_methods),trials,len(model_types),3))
+    times = copy.copy(acc)
+    
+    for sm in range(len(scaling_methods)):
+        if scaling_methods[sm] != 'none':
+            
+            df_train_scaled, scaler = scale_data(df_train, 
+                                           method = scaling_methods[sm])
+            
+            cols = df_test.columns[3:]
+            df_test_scaled = copy.deepcopy(df_test)
+            df_test_scaled[cols] = scaler.transform(df_test[cols])
+            
+        else:
+            df_train_scaled = copy.deepcopy(df_train)
+            df_test_scaled = copy.deepcopy(df_test)
+        
+        for t in range(trials):
+            x_train, x_test, y_train, y_test, wi_train, worminf_test = split(
+                df_train_scaled, 0.75, rand_split)
+            
+            for mt in range(len(model_types)):
+                print(model_types[mt])
+                
+                # train on training video and record training and test 
+                # accuracy on this video and elapsed time
+                t0 = time.time()
+                mod, train_acc, train_test_acc, probs, preds = learn_and_predict(
+                    x_train, x_test, y_train, y_test, model_types[mt])
+                train_time = time.time()-t0
+                
+                # use the same model to make inferences on another video and
+                # record the elapsed time and accuracy
+                t0 = time.time()
+                preds = mod.predict(
+                    df_test_scaled[df_test_scaled.columns[3:]])
+                test_test_acc = np.sum(np.array(df_test_scaled[
+                    'manual_behavior_label']) == preds) / len(preds)
+                infr_time = time.time()-t0
+                
+                
+                acc[sm,t,mt,0] = train_acc
+                acc[sm,t,mt,1] = train_test_acc
+                acc[sm,t,mt,2] = test_test_acc
+                
+                times[sm,t,mt,0] = train_time
+                times[sm,t,mt,1] = infr_time
+                
+    
+    return acc, times
+                # heatmap_acc[mt,2*sm:2*sm+2] = [train_acc,test_acc]
+
     # # initialize heatmap for accuracy
     # heatmap_acc = np.empty((len(model_types),10))
     # # accuracy heat map figure
@@ -166,7 +277,35 @@ def evaluate_models_accuracy(vid_file, **kwargs):
 
 
 
+def separate_list_by_worm(lst, df):
+    '''Takes a continuous list <lst> and splits it into a list of lists 
+    based on the worm numbers in <df>'''
+    
+    lst = np.array(lst)
+    lst_by_worm = []
+    df_zeroi = df.reset_index()
+    
+    num_w =  int(df.loc[df['worm'].idxmax()][0]) + 1
+    for w in range(num_w):
+        inds = df_zeroi.index[df_zeroi['worm'] == w].tolist()
+        lst_by_worm.append(lst[inds])
+    
+    return lst_by_worm
 
+
+def compare_scores_list(man_scores, comp_scores):
+    '''Takes two lists of lists of worm track scores, compares them, and
+    returns the overall accuracy.'''
+    
+    total = 0
+    same = 0
+    for wt in range(len(man_scores)):
+        total += len(comp_scores[wt])
+        comp_scores[wt] = comp_scores[wt].astype(np.int16)
+        man_scores[wt] = man_scores[wt].astype(np.int16)
+        same += np.sum(comp_scores[wt]==man_scores[wt])
+    return same / total
+    
 
 
 # from nictation_20220523\nictation_scoring_training\nict_scoring_functions
@@ -498,50 +637,131 @@ def probabilities_to_predictions(probs):
 
     return preds#np.int8(preds)
 
-
-# def first_derivative_act(act,fps):
-#     # uint to float to handle negatives and non-integers
-#     for w in range(len(act)): act[w] = list(map(float, act[w]))
-
-#     act_primed = copy.deepcopy(act)
-#     act_trunc = copy.deepcopy(act)
-#     for w in range(len(act)):
-#         act_primed[w] = np.diff(act[w])/(1.0/fps)
-#         act_trunc[w] = np.array(act[w][1:])
-#     return act_primed, act_trunc
-
-
-
-# def first_derivative_met(met,fps):
-#     met_primed = copy.deepcopy(met)
-#     met_trunc = copy.deepcopy(met)
-#     for m in range(len(met)):
-#         for w in range(len(met[m])):
-#             met_primed[m][w] = np.diff(met[m][w])/(1.0/fps)
-#             met_trunc[m][w] = met[m][w][1:]
-#     return met_primed, met_trunc
-    
     
 
-def first_derivative_df(df,fps):
-    '''Calculated the first derivative of each feature based on the value in
-    the previous worm-frame and time elapsed (1/fps).  Inserts NaN if there is
-    no previous frame available'''
+# def first_derivative_df(df,fps):
+#     '''Calculates the first derivative of each feature based on the value in
+#     the previous worm-frame and time elapsed (1/fps).  Inserts NaN if there is
+#     no previous frame available'''
     
-    df_primed = copy.deepcopy(df)
+#     df_primed = copy.deepcopy(df)
     
-    for col in df.columns[2:]:
+#     for col in df.columns[2:]:
+#         new_col = []
+#         for row in range(np.shape(df)[0]):
+#             if df['frame'][row] == 0 or row == 0 or np.isnan(df[col][row]) \
+#                 or np.isnan(df[col][row-1]):
+#                 new_col.append(np.nan)
+#             else:
+#                 new_col.append((df[col][row]-df[col][row-1])/(1.0/fps))
+#         df_primed[col+'_primed'] = new_col
+
+#     return df_primed #, df_truncated
+    
+
+def calculate_metafeatures(df,fps):
+    '''Calculates several metafeatures from the original features, including
+    the first derivative of each feature based on the value in the previous
+    worm-frame and time elapsed (1/fps), the first derivative based on the
+    value in the next worm-frame, and statistical features like the min, max,
+    variance, mean, median, and total change of each feature.  Inserts NaN if
+    there is no previous or or next frame value available for the derivatives,
+    or if any of the neighborhood frames are missing (+/- 2 frames) for the
+    statistical features.'''
+    
+    df_meta = copy.deepcopy(df)
+    feats = copy.copy(df.columns[2:])
+
+    
+    # first derivative based on previous frame
+    for col in feats:
         new_col = []
         for row in range(np.shape(df)[0]):
+            # assign NaN for first frame in wormtrack, first entry in df, or
+            # if the current or previous frame is nan
             if df['frame'][row] == 0 or row == 0 or np.isnan(df[col][row]) \
                 or np.isnan(df[col][row-1]):
                 new_col.append(np.nan)
             else:
                 new_col.append((df[col][row]-df[col][row-1])/(1.0/fps))
-        df_primed[col+'_primed'] = new_col
+        df_meta[col+'_primed1'] = new_col
 
-    return df_primed #, df_truncated
+
+    # first derivative based on next frame
+    for col in feats:
+        new_col = []
+        for row in range(np.shape(df)[0]):
+            # assign NaN for last frame in wormtrack, last entry in df, 
+            # or if the current or nexr frame is NaN
+            if row == np.shape(df)[0]-1 or df['frame'][row+1] == 0 or np.isnan(df[col][row]) \
+                or np.isnan(df[col][row+1]):
+                new_col.append(np.nan)
+            else:
+                new_col.append((df[col][row+1]-df[col][row])/(1.0/fps))
+        df_meta[col+'_primed2'] = new_col
+
+
+    # min
+    for col in feats:
+        new_col = []
+        for row in range(np.shape(df)[0]):
+            # assign NaN for first or last two frames in wormtrack, first or
+            # last two entries in the dataframe, or if the range of +/- two
+            # frames contains a nan (this is taken care of by using np.mean
+            # instead of np.nanmean, etc.)
+            if row <= 2 or row >= np.shape(df)[0]-3 or \
+                df['frame'][row+2] <= 3:
+                new_col.append(np.nan)
+            else:
+                new_col.append(np.min(df[col][row-2:row+3]))
+        df_meta[col+'_min'] = new_col
     
+    # max
+    for col in feats:
+        new_col = []
+        for row in range(np.shape(df)[0]):
+            if row <= 2 or row >= np.shape(df)[0]-3 or \
+                df['frame'][row+2] <= 3:
+                new_col.append(np.nan)
+            else:
+                new_col.append(np.max(df[col][row-2:row+3]))
+        df_meta[col+'_max'] = new_col
+    
+    # var
+    for col in feats:
+        new_col = []
+        for row in range(np.shape(df)[0]):
+            if row <= 2 or row >= np.shape(df)[0]-3 or \
+                df['frame'][row+2] <= 3:
+                new_col.append(np.nan)
+            else:
+                new_col.append(np.var(df[col][row-2:row+3]))
+        df_meta[col+'_var'] = new_col
+    
+    # mean
+    for col in feats:
+        new_col = []
+        for row in range(np.shape(df)[0]):
+            if row <= 2 or row >= np.shape(df)[0]-3 or \
+                df['frame'][row+2] <= 3:
+                new_col.append(np.nan)
+            else:
+                new_col.append(np.mean(df[col][row-2:row+3]))
+        df_meta[col+'_mean'] = new_col
+    
+    # median
+    for col in feats:
+        new_col = []
+        for row in range(np.shape(df)[0]):
+            if row <= 2 or row >= np.shape(df)[0]-3 or \
+                df['frame'][row+2] <= 3:
+                new_col.append(np.nan)
+            else:
+                new_col.append(np.median(df[col][row-2:row+3]))
+        df_meta[col+'_med'] = new_col
+
+    return df_meta.copy() # .copy() de-fragments the dataframe
+
 
 
 # def split_man_scores(man_scores, wi):
@@ -633,19 +853,18 @@ def nan_inf_mask_dataframe(dataframe):
     
 
 
-def scale_data(dataframe,method = 'min max'):
+def scale_data(dataframe, scaler = None ,method = 'min max'):
     
-    df = copy.deepcopy(dataframe)
+    if scaler is None:
+        if method == 'min max':
+            scaler = MinMaxScaler()
+        elif method == 'variance':
+            scaler = StandardScaler()
+        elif method == 'Gaussian':
+            scaler = PowerTransformer(method = 'yeo-johnson')
+        elif method == 'whiten':
+            scaler = PCA(whiten = True)
     
-    if method == 'min max':
-        scaler = MinMaxScaler()
-    elif method == 'variance':
-        scaler = StandardScaler()
-    elif method == 'Gaussian':
-        scaler = PowerTransformer(method = 'yeo-johnson')
-    elif method == 'whiten':
-        scaler = PCA(whiten = True)
-        
     df_scaled = copy.deepcopy(dataframe)
     cols = dataframe.columns[3:]
     df_scaled[cols] = scaler.fit_transform(df_scaled[cols])
@@ -681,6 +900,21 @@ def shuffle(df_masked,prop_train = 0.75):
 # MACHINE LEARNING MODELS
 
 
+def scramble_df_col(df, cols_to_scramble, rand_rand = False):
+    '''Takes a dataframe <df> and randomly permutes all columns in the list
+    <cols_to_scramble>. If <rand_rand> is False, then the random number
+    generator is seeded for consistency. Returns the scrambled dataframe.'''
+    
+    if rand_rand:
+        np.random.seed(0)
+    
+    df_scr = copy.copy(df)
+    for col in df.columns:
+        if col in cols_to_scramble:
+            df_scr[col] = np.random.permutation(df_scr[col].values)
+    
+    
+    return df_scr
 
 
 # shuffled:
@@ -767,7 +1001,7 @@ def calculate_features(vid_file):
     # calculate other features
     scl = params['um_per_pix']
     for w in range(len(cents)):
-        print('Calculating features for worm ' + str(w) + ' of ' + 
+        print('Calculating features for worm ' + str(w+1) + ' of ' + 
               str(len(cents)) + '.')
         cl0 = None
         
@@ -824,7 +1058,8 @@ def calculate_features(vid_file):
     
     # calculate first derivatives
     fps = vid.get(cv2.CAP_PROP_FPS)
-    df = first_derivative_df(df,fps)
+    df = calculate_metafeatures(df,fps)
+    
     
     # save indicator values
     df.to_csv(os.path.splitext(vid_file)[0] + 
@@ -837,16 +1072,22 @@ def calculate_features(vid_file):
 if __name__ == '__main__':
     try:
         
-        # vf = "C:\\Users\\Temmerman Lab\\Desktop\\Celegans_nictation_dataset"+\
-        #     "\\Ce_R2_d21.avi"
-        
+        # vf = r"C:\Users\Temmerman Lab\Dropbox\Temmerman_Lab\data\Celegans_vids_cropped_full\Luca_T2_Rep1_day60002 22-01-18 11-49-24_crop_1_to_300_inc_3.avi"
         # calculate_features(vf)
         
-        vid_dir = r"C:\\Users\\Temmerman Lab\\Desktop\\Celegans_nictation_dataset"
-        file_list = os.listdir(vid_dir)
-        for f in file_list[70:]:
-            if f[-4:] == '.avi' and f[:-4]+'_tracking' in file_list:
-                calculate_features(vid_dir + '\\' + f)
+        
+        vf = r"C:\Users\Temmerman Lab\Desktop\Celegans_nictation_dataset\Ce_R2_d21.avi"
+        calculate_features(vf)
+        
+        vf = r"C:\Users\Temmerman Lab\Desktop\Celegans_nictation_dataset\Ce_R3_d06.avi"
+        calculate_features(vf)
+
+        
+        # vid_dir = r"C:\\Users\\Temmerman Lab\\Desktop\\Celegans_nictation_dataset"
+        # file_list = os.listdir(vid_dir)
+        # for f in file_list[70:]:
+        #     if f[-4:] == '.avi' and f[:-4]+'_tracking' in file_list:
+        #         calculate_features(vid_dir + '\\' + f)
         
         
         # vf = r"C:\Users\Temmerman Lab\Desktop\test_data_for_tracking\R1d4_first_four.avi"

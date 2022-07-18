@@ -28,6 +28,16 @@ palette = np.array([[  255,   255,   255],   # white - no score
                     [80, 0, 0]])  # dark red - standing
 
 
+def interleaved_scores_plot(scores, to_show, labels):
+    '''Plots scores from worm tracks in <to_show> in list of lists <scores>,
+    using list of strings <labels> for a key'''
+    
+    
+    
+    
+    
+    plt.show()
+
 # plots a heat map / gantt chart of dauer behavioral scores
 def plot_scores(scores, title = 'Manual Nictation Scores',figsize = (5.3,5.3),w_tick_start = 0):
     #import pdb; pdb.set_trace()

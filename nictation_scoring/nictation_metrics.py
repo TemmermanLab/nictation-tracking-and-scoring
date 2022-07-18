@@ -33,7 +33,7 @@ import numpy as np
 
 def nictation_ratio(scores, only_active = True):
     '''takes a list of nictation scores and finds the number of frames scored
-    as nictation and divides that by the number of frames scored (not 
+    as nictation and divides that by the number of frames scored (but not 
     censored).  If <only_active> is true, only waving and crawling are 
     counted. NB: "initiation index was the frequency with which nictation was
     started while dauers cruised the micro-dirt chip"- Lee et al 2012
