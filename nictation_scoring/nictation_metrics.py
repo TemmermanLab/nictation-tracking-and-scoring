@@ -82,36 +82,40 @@ def initiation_rate(scores, only_active = True, fps = 5):
         
         for ws in scores:
             
-            if ws[0] == 1:
-                denominator += 1
+            if len(ws) > 0:
             
-            for f in range(1,len(ws)):
-                
-                if ws[f-1] == 1 and ws[f] == 2:
-                    num_transitions += 1
-                
-                if ws[f] == 1:
+                if ws[0] == 1:
                     denominator += 1
+                
+                for f in range(1,len(ws)):
+                    
+                    if ws[f-1] == 1 and ws[f] == 2:
+                        num_transitions += 1
+                    
+                    if ws[f] == 1:
+                        denominator += 1
     else:
         
         for ws in scores:
             
-            if ws[0] == 1 or ws[0] == 0:
-                denominator += 1
+            if len(ws) > 0:
             
-            for f in range(1,len(ws)):
-                
-                if ws[f-1] == 1 and ws[f] == 2:
-                    num_transitions += 1
-                elif ws[f-1] == 1 and ws[f] == 3:
-                    num_transitions += 1
-                elif ws[f-1] == 0 and ws[f] == 2:
-                    num_transitions += 1
-                elif ws[f-1] == 0 and ws[f] == 3:
-                    num_transitions += 1
-                
-                if ws[f] == 1 or ws[f] == 0:
+                if ws[0] == 1 or ws[0] == 0:
                     denominator += 1
+                
+                for f in range(1,len(ws)):
+                    
+                    if ws[f-1] == 1 and ws[f] == 2:
+                        num_transitions += 1
+                    elif ws[f-1] == 1 and ws[f] == 3:
+                        num_transitions += 1
+                    elif ws[f-1] == 0 and ws[f] == 2:
+                        num_transitions += 1
+                    elif ws[f-1] == 0 and ws[f] == 3:
+                        num_transitions += 1
+                    
+                    if ws[f] == 1 or ws[f] == 0:
+                        denominator += 1
                     
     init_rate = num_transitions / denominator
     
@@ -130,38 +134,42 @@ def stopping_rate(scores, only_active = True, fps = 5):
     
     if only_active:
         
-        for ws in scores:
-            
-            if ws[0] == 2:
-                denominator += 1
-            
-            for f in range(1,len(ws)):
+        if len(ws) > 0:
+        
+            for ws in scores:
                 
-                if ws[f-1] == 2 and ws[f] == 1:
-                    num_transitions += 1
-                
-                if ws[f] == 2:
+                if ws[0] == 2:
                     denominator += 1
+                
+                for f in range(1,len(ws)):
+                    
+                    if ws[f-1] == 2 and ws[f] == 1:
+                        num_transitions += 1
+                    
+                    if ws[f] == 2:
+                        denominator += 1
     else:
         
         for ws in scores:
             
-            if ws[0] == 2 or ws[0] == 3:
-                denominator += 1
+            if len(ws) > 0:
             
-            for f in range(1,len(ws)):
-                
-                if ws[f-1] == 2 and ws[f] == 1:
-                    num_transitions += 1
-                elif ws[f-1] == 3 and ws[f] == 1:
-                    num_transitions += 1
-                elif ws[f-1] == 2 and ws[f] == 0:
-                    num_transitions += 1
-                elif ws[f-1] == 3 and ws[f] == 0:
-                    num_transitions += 1
-                
-                if ws[f] == 2 or ws[f] == 3:
+                if ws[0] == 2 or ws[0] == 3:
                     denominator += 1
+                
+                for f in range(1,len(ws)):
+                    
+                    if ws[f-1] == 2 and ws[f] == 1:
+                        num_transitions += 1
+                    elif ws[f-1] == 3 and ws[f] == 1:
+                        num_transitions += 1
+                    elif ws[f-1] == 2 and ws[f] == 0:
+                        num_transitions += 1
+                    elif ws[f-1] == 3 and ws[f] == 0:
+                        num_transitions += 1
+                    
+                    if ws[f] == 2 or ws[f] == 3:
+                        denominator += 1
     
     if denominator == 0:
         stop_rate = np.nan

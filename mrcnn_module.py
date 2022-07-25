@@ -120,7 +120,10 @@ def segment_frame_by_tiling(img, model, device, tile_width, overlap):
 
 def segment_full_frame(img, model, device, scale_factor):
     dim_orig = (img.shape[1],img.shape[0])
-    width = int(img.shape[1] * scale_factor)
+    try:
+        width = int(img.shape[1] * scale_factor)
+    except:
+        import pdb; pdb.set_trace()
     height = int(img.shape[0] * scale_factor)
     dim = (width, height)
     img = cv2.resize(img, dim, interpolation = cv2.INTER_AREA)

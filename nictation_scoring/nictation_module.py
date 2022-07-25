@@ -10,7 +10,7 @@ calculating features and nictation metrics are in separate files.
 Issues and improvements:
     
     -Evaluate models only takes training data from one video
-
+    -Currently featured have 16 digits, they could do with fewer
 
 @author: Temmerman Lab
 """
@@ -57,6 +57,7 @@ sys.path.append(home + \
 
 import nictation_features as nf
 import nictation_plotting as nict_plot
+import nictation_metrics as nict_met
 import tracker as trkr
 import data_management_module as dmm
 
@@ -176,26 +177,38 @@ def evaluate_models_accuracy_2(vid_file_train, vid_file_test, **kwargs):
     
     trials = kwargs.get('trials',1)
     
-    model_types = kwargs.get('model_types',['logistic regression','decision tree',
-                   'k nearest neighbors', 'linear discriminant analysis',
-                   'Gaussian naive Bayes', 'support vector machine', 
-                   'random forest', 'neural network'])
+    model_types = kwargs.get('model_types',['logistic regression',
+        'decision tree', 'k nearest neighbors',
+        'linear discriminant analysis', 'Gaussian naive Bayes',
+        'support vector machine', 'random forest', 'neural network'])
     
     scaling_methods = kwargs.get('scaling_methods',['none','min max',
                         'variance','Gaussian','whiten'])
     
     rand_split = kwargs.get('rand_split',False)
     
+    sigmas = kwargs.get('sigmas', np.arange(0,1.5,0.1))
+    
+    fps = kwargs.get('fps', 5)
+    
+    only_active = kwargs.get('only_active', False)
+    
     
     # load features and manual scores for the training and test videos
     df_train = combine_and_prepare_man_scores_and_features(vid_file_train)
     df_test = combine_and_prepare_man_scores_and_features(vid_file_test)
+    man_scores_test_vid = separate_list_by_worm(
+        df_test['manual_behavior_label'], df_test)
     
     # # plot the abundance of worm-frames with each behavior label
     # nict_plot.bar_count(df_train)
     
-    acc = np.empty((len(scaling_methods),trials,len(model_types),3))
-    times = copy.copy(acc)
+    accs = np.empty((len(scaling_methods),trials,len(model_types),len(sigmas)
+                    ,3))
+    times = np.empty((len(scaling_methods),trials,len(model_types),3))
+    NRs = copy.copy(accs)
+    IRs = copy.copy(accs)
+    SRs = copy.copy(accs)
     
     for sm in range(len(scaling_methods)):
         if scaling_methods[sm] != 'none':
@@ -212,8 +225,10 @@ def evaluate_models_accuracy_2(vid_file_train, vid_file_test, **kwargs):
             df_test_scaled = copy.deepcopy(df_test)
         
         for t in range(trials):
-            x_train, x_test, y_train, y_test, wi_train, worminf_test = split(
+            x_train, x_test, y_train, y_test, wi_train, wi_test = split(
                 df_train_scaled, 0.75, rand_split)
+            man_scores_train_train = separate_list_by_worm(y_train, wi_train)
+            man_scores_train_test = separate_list_by_worm(y_test, wi_test)
             
             for mt in range(len(model_types)):
                 print(model_types[mt])
@@ -221,29 +236,93 @@ def evaluate_models_accuracy_2(vid_file_train, vid_file_test, **kwargs):
                 # train on training video and record training and test 
                 # accuracy on this video and elapsed time
                 t0 = time.time()
-                mod, train_acc, train_test_acc, probs, preds = learn_and_predict(
-                    x_train, x_test, y_train, y_test, model_types[mt])
+                categories = np.unique(y_train) # sometimes a label is not
+                # represented in the training set
+                mod, train_acc, train_test_acc, probs, preds = \
+                    learn_and_predict(x_train, x_test, y_train, y_test,
+                                      model_types[mt])
                 train_time = time.time()-t0
+                
+                
+                # make probability infrerence on the training and test 
+                # portions of the training video to be used below
+                probs_train_train = mod.predict_proba(x_train)
+                probs_train_test = mod.predict_proba(x_test)
                 
                 # use the same model to make inferences on another video and
                 # record the elapsed time and accuracy
                 t0 = time.time()
-                preds = mod.predict(
+                probs_test_vid = mod.predict_proba(
                     df_test_scaled[df_test_scaled.columns[3:]])
-                test_test_acc = np.sum(np.array(df_test_scaled[
-                    'manual_behavior_label']) == preds) / len(preds)
                 infr_time = time.time()-t0
                 
+                # cycle through smoothing sigmas
+                for sg in range(len(sigmas)):
+                    
+                    # smooth and inferences and calculate nictation metrics on
+                    # the training set of the training video
+                    probs_smooth = smooth_probabilities(
+                        probs_train_train, sigmas[sg], fps)
+                    preds_smooth = probabilities_to_predictions(probs_smooth,
+                                                                categories)
+                    preds_smooth_list = separate_list_by_worm(
+                        preds_smooth, wi_train)
                 
-                acc[sm,t,mt,0] = train_acc
-                acc[sm,t,mt,1] = train_test_acc
-                acc[sm,t,mt,2] = test_test_acc
+                    NRs[sm,t,mt,sg,0] = nict_met.nictation_ratio(
+                        preds_smooth_list, only_active)
+                    IRs[sm,t,mt,sg,0] = nict_met.initiation_rate(
+                        preds_smooth_list, only_active)
+                    SRs[sm,t,mt,sg,0] = nict_met.stopping_rate(
+                        preds_smooth_list, only_active)
+                    accs[sm,t,mt,sg,0] = compare_scores_list(
+                        man_scores_train_train,preds_smooth_list)
+                    
+                    
+                    # smooth and inferences and calculate nictation metrics on
+                    # the test set of the training video
+                    probs_smooth = smooth_probabilities(
+                        probs_train_test, sigmas[sg], fps)
+                    preds_smooth = probabilities_to_predictions(probs_smooth,
+                                                                categories)
+                    preds_smooth_list = separate_list_by_worm(
+                        preds_smooth, wi_test)
                 
+                    NRs[sm,t,mt,sg,1] = nict_met.nictation_ratio(
+                        preds_smooth_list, only_active)
+                    IRs[sm,t,mt,sg,1] = nict_met.initiation_rate(
+                        preds_smooth_list, only_active)
+                    SRs[sm,t,mt,sg,1] = nict_met.stopping_rate(
+                        preds_smooth_list, only_active)
+                    accs[sm,t,mt,sg,1] = compare_scores_list(
+                        man_scores_train_test, preds_smooth_list)
+                    
+                    
+                    # smooth and inferences and calculate nictation metrics on
+                    # the separate test video
+                    probs_smooth = smooth_probabilities(
+                        probs_test_vid, sigmas[sg], fps)
+                    preds_smooth = probabilities_to_predictions(probs_smooth,
+                                                                categories)
+                    preds_smooth_list = separate_list_by_worm(
+                        preds_smooth, df_test_scaled)
+                
+                    NRs[sm,t,mt,sg,2] = nict_met.nictation_ratio(
+                        preds_smooth_list, only_active)
+                    IRs[sm,t,mt,sg,2] = nict_met.initiation_rate(
+                        preds_smooth_list, only_active)
+                    SRs[sm,t,mt,sg,2] = nict_met.stopping_rate(
+                        preds_smooth_list, only_active)
+                    accs[sm,t,mt,sg,2] = compare_scores_list(
+                        man_scores_test_vid, preds_smooth_list)
+               
+                
+                # training and inference times do not include the smoothing
+                # time, which is basically negligable
                 times[sm,t,mt,0] = train_time
                 times[sm,t,mt,1] = infr_time
                 
     
-    return acc, times
+    return accs, times, NRs, IRs, SRs
                 # heatmap_acc[mt,2*sm:2*sm+2] = [train_acc,test_acc]
 
     # # initialize heatmap for accuracy
@@ -618,9 +697,8 @@ def smooth_probabilities(probabilities, sigma, fps = 5.0):
     if sigma != 0:
         if type(probabilities)==list:
             for w in range(len(probabilities_smooth)):
-                if sigma != 0:
-                    probabilities_smooth[w] = gaussian_filter1d(
-                        probabilities_smooth[w],sigma, axis = 0)
+                probabilities_smooth[w] = gaussian_filter1d(
+                    probabilities_smooth[w],sigma, axis = 0)
         else:
             for behavior in range(np.shape(probabilities_smooth)[1]):
                 probabilities_smooth[:,behavior] = gaussian_filter1d(
@@ -630,10 +708,14 @@ def smooth_probabilities(probabilities, sigma, fps = 5.0):
 
 
 
-def probabilities_to_predictions(probs):
+def probabilities_to_predictions(probs, categories):
+    pred_nums = list()
+    
+    for f in probs: pred_nums.append(np.argmax(f,axis = -1))
+    
     preds = list()
     
-    for w in probs: preds.append(np.argmax(w,axis = -1)-1)
+    for i in pred_nums: preds.append(categories[i])
 
     return preds#np.int8(preds)
 

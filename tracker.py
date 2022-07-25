@@ -69,14 +69,13 @@ class Tracker:
     #         r'de\nictation\mask_R-CNN\Steinernema\20220127_full_frame_Sc_on'+\
     #         r'_udirt_4.pt'
     model_file = os.path.split(__file__)[0] + \
-        r'\dependencies\20220127_full_frame_Sc_on_udirt_4.pt'
-    
-    print('WARNING: Using C. elegans metaparameters')
+        r'\mask_RCNN\Steinernema_mask_RCNN\20220127_full_frame_Sc_on_udirt_4.pt'
+    print('WARNING: Using S. carpocapsae metaparameters')
     
     metaparameters = {
         'centerline_method' : 'ridgeline',
         'centerline_npts' : 50,
-        'max_centerline_length' : 1152, # originally 268 pix
+        'max_centerline_length' : 750, # originally 268 pix, 690 is S. carpo. in um w/ 20% extra
         'max_centerline_angle' : 45,
         'edge_proximity_cutoff' : 10, # pix
         'deformable_model_scale' : 0.5,
@@ -84,8 +83,9 @@ class Tracker:
         'stitching_method' : 'overlap', # originally it was centroid distance
         }
     
-    model_file = os.path.split(__file__)[0] + \
-        r'\dependencies\20220331_full_frame_Ce_on_udirt_2.pt'
+    # model_file = os.path.split(__file__)[0] + \
+    #     r'\dependencies\20220331_full_frame_Ce_on_udirt_2.pt'
+    # print('WARNING: Using C. elegans metaparameters')
     
     model_scale = (960, 1280) # rows, cols
     
@@ -148,6 +148,8 @@ class Tracker:
         if self.segmentation_method == 'intensity':
             self.background = self.get_background(self.vid,
                                             self.parameters['bkgnd_nframes'])
+        else:
+            self.background = None
         self.dimensions = (int(self.vid.get(4)),int(self.vid.get(3)))
         # assumes same aspect ratio
         self.scale_factor = self.model_scale[0]/self.dimensions[0]
@@ -176,9 +178,25 @@ class Tracker:
         
     # wrapper called by tracking GUI
     def save_params(self):
-        save_path = self.vid_path + '\\' \
-            + os.path.splitext(self.vid_name)[0] + '_tracking'
-        dm.save_params_csv(self.parameters, save_path, 'tracking_parameters')
+        
+        
+        # if self.segmentation_method == 'mask_RCNN':
+        #     self.save_path = self.vid_path + '//' + self.vid_name[:-4] + \
+        #         '_mRCNN_tracking'
+        #     self.save_path_troubleshooting = self.save_path + \
+        #         '//mRCNN_troubleshooting'
+        # elif self.segmentation_method == 'intensity':
+        #     self.save_path = self.vid_path + '//' + self.vid_name[:-4] + \
+        #         '_intensity_tracking'
+        #     self.save_path_troubleshooting = self.save_path + \
+        #         '//intensity_troubleshooting'
+        
+        
+        # save_path = self.vid_path + '\\' \
+        #     + os.path.splitext(self.vid_name)[0] + '_tracking'
+        # dm.save_params_csv(self.parameters, save_path, 'tracking_parameters')
+        
+        dm.save_params_csv(self.parameters, self.save_path, 'tracking_parameters')
     
     
     def set_parameters(self,human_checked,bkgnd_meth,bkgnd_nframes,k_sig,
@@ -207,7 +225,7 @@ class Tracker:
         k_size = (round(k_sig*3)*2+1,
                   round(k_sig*3)*2+1)
         area_bnds = np.array(self.parameters['area_bnds']) * \
-            (1/self.parameters['um_per_pix']**2)
+            (1/(self.parameters['um_per_pix']**2))
         max_angle = self.metaparameters['max_centerline_angle']
         max_length = self.metaparameters['max_centerline_length'] * \
             (1/self.parameters['um_per_pix'])
@@ -275,7 +293,8 @@ class Tracker:
         f_thickness = round(2 * font_factor)
         f_color = (0,0,0)
         linewidth = round(1 * font_factor)
-        offset = round(50 * font_factor)
+        linewidth_scale = round(2 * font_factor)
+        offset = round(70 * font_factor)
         
         # create 'final' image showing identified worms
         final_HSV = cv2.cvtColor(cv2.cvtColor(img,cv2.COLOR_GRAY2BGR),
@@ -307,7 +326,7 @@ class Tracker:
         # label the size of all blobs
         for cc_i in cc_is[1:]:
             cc_sz = cc[2][cc_i][4]
-            text = str(cc_sz)
+            text = str(round(cc_sz*(self.parameters['um_per_pix']**2)))
             text_size = cv2.getTextSize(text, f_face, f_scale, f_thickness)[0]
             text_pos = copy.copy(cc[3][cc_i]) 
             text_pos[0] = text_pos[0]-text_size[0]/2 # x centering
@@ -322,15 +341,15 @@ class Tracker:
      
         # show the distance threshold
         if self.parameters['d_thr'] is not None:
-            d_thr = self.parameters['d_thr'] * \
-                (1/self.parameters['um_per_pix'])
-            text = 'd='+str(d_thr)
+            d_thr = np.round(self.parameters['d_thr'] * \
+                (1/self.parameters['um_per_pix'])).astype(np.int32)
+            text = 'd='+str(self.parameters['d_thr'])+' um'
             text_size = cv2.getTextSize(text, f_face, f_scale, f_thickness)[0]
             pt1 = [np.shape(img)[1]-offset,np.shape(img)[0]-offset]
             pt2 = [pt1[0]-d_thr,pt1[1]]
             text_pos = np.array((((pt1[0]+pt2[0])/2,pt1[1])),dtype='uint16')
             text_pos[0] = text_pos[0] - text_size[0]/2 # x centering 
-            text_pos[1] = text_pos[1] - 5 # y offset   
+            text_pos[1] = text_pos[1] - 5 # y offset
             final = cv2.polylines(final, np.array([[pt1,pt2]]), True, 
                                  (0,0,255), linewidth)
             final = cv2.putText(final,text,tuple(text_pos),f_face,f_scale,
@@ -384,8 +403,8 @@ class Tracker:
             
             centroids_frame, centerlines_frame, centerline_flags_frame, \
                     angles_end_1_frame, angles_end_2_frame = \
-                    self.find_worms(img, self.segmentation_method, self.metaparameters, self.parameters, 
-                                    self.model, self.device, self.scale_factor)
+                        self.find_worms(img, self.segmentation_method, self.metaparameters, self.parameters, 
+                                    self.background, self.model, self.device, self.scale_factor)
             
             self.stitch_centroids(centroids_frame, centerlines_frame,
                                   centerline_flags_frame, angles_end_1_frame,
