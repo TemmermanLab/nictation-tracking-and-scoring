@@ -68,9 +68,9 @@ class Tracker:
     # model_file = r'C:\Users\Temmerman Lab\Dropbox\Temmerman_Lab\co'+\
     #         r'de\nictation\mask_R-CNN\Steinernema\20220127_full_frame_Sc_on'+\
     #         r'_udirt_4.pt'
-    model_file = os.path.split(__file__)[0] + \
-        r'\mask_RCNN\Steinernema_mask_RCNN\20220127_full_frame_Sc_on_udirt_4.pt'
-    print('WARNING: Using S. carpocapsae metaparameters')
+    # model_file = os.path.split(__file__)[0] + \
+    #     r'\mask_RCNN\Steinernema_mask_RCNN\20220127_full_frame_Sc_on_udirt_4.pt'
+    # print('WARNING: Using S. carpocapsae metaparameters')
     
     metaparameters = {
         'centerline_method' : 'ridgeline',
@@ -83,9 +83,9 @@ class Tracker:
         'stitching_method' : 'overlap', # originally it was centroid distance
         }
     
-    # model_file = os.path.split(__file__)[0] + \
-    #     r'\dependencies\20220331_full_frame_Ce_on_udirt_2.pt'
-    # print('WARNING: Using C. elegans metaparameters')
+    model_file = os.path.split(__file__)[0] + \
+        r'\mask_RCNN\Celegans_mask_RCNN\20220331_full_frame_Ce_on_udirt_2.pt'
+    print('WARNING: Using C. elegans metaparameters')
     
     model_scale = (960, 1280) # rows, cols
     
@@ -817,16 +817,20 @@ class Tracker:
                     mask = np.zeros((height + 2, width + 2), np.uint8)
                     floodfilled = False
                     
-                    # check if point in moving_centerline are in an ROI
+                    # check if points in moving_centerline are in an ROI
                     for p in range(np.shape(moving_centerline)[1]):
-                        if bw[moving_centerline[0][p][1].astype(np.int16),
-                            moving_centerline[0][p][0].astype(np.int16)] \
-                            == 255:
-                            cv2.floodFill(bw, mask, (
-                                moving_centerline[0][p][0].astype(np.int16),
-                                moving_centerline[0][p][1].astype(np.int16)),
-                                127)
-                            floodfilled = True; break
+                        # in case a point near the edge rounds out of bounds
+                        try: 
+                            if bw[moving_centerline[0][p][1].astype(np.int16),
+                                moving_centerline[0][p][0].astype(np.int16)] \
+                                == 255:
+                                cv2.floodFill(bw, mask, (
+                                    moving_centerline[0][p][0].astype(np.int16),
+                                    moving_centerline[0][p][1].astype(np.int16)),
+                                    127)
+                                floodfilled = True; break
+                        except:
+                            pass
                     
                     # failing that, look for the foreground point in bw
                     # closest to the midpoint of the moving centerline

@@ -13,7 +13,8 @@ workflow is:
 
 Known issues and improvements:
     -recalculate background when bkgnd_num_frames is changed
-    -grab current values when existing from parameter GUI (should be separate
+    -grab current values when existing from parameter GUI (
+        uld be separate
         function for updating params)
     -shrink scale-finding image to fit in the screen
     -automatically set parameters according to scale and brightness
