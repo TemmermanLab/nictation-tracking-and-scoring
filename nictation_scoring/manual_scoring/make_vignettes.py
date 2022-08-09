@@ -22,9 +22,14 @@ import time
 
 import sys
 #sys.path.append(os.path.split(__file__)[0])
-sys.path.append(r'C:\Users\Temmerman Lab\Dropbox\Temmerman_Lab\code\nictation')
 
-import tracker_classes as tracker
+from pathlib import Path
+home = str(Path.home())
+
+sys.path.append(home+r'\Dropbox\Temmerman_Lab\code\tracking-and-scoring-nictation')
+
+#import tracker as tracker
+import data_management_module as dm
 
 
 # POST-PROCESSING / CLEANUP
@@ -225,14 +230,14 @@ try:
     
     
     vid_name = 'Sc_smell1_V2.avi'
-    vid_path = 'C://Users//Temmerman Lab//Desktop//Scarpocapsae_nictation_dataset'
-    vid_tracking_path = 'Sc_smell1_V2.avi_tracking\\'
+    vid_path = r'D:\Pat working\Scarpocapsae_nictation_dataset'
+    vid_tracking_path = '\\Sc_smell1_V2_mRCNN_tracking\\'
     centroids_file = vid_path + vid_tracking_path + 'centroids.csv'
-    centroids, first_frames = tracker.Tracker.load_centroids_csv(
-                                                            centroids_file)
-    centerlines, flags = tracker.Tracker.load_centerlines_csv(vid_path +
-                                        vid_tracking_path + r'\centerlines')
-    create_vignettes(vid_name, vid_path, centroids, centerlines, first_frames)
+    centroids, first_frames = dm.load_centroids_csv(centroids_file)
+    centerlines_path = vid_path + vid_tracking_path + '\\centerlines'
+    centerlines, flags = dm.load_centerlines_csv(centerlines_path)
+    hw = create_vignettes(vid_name, vid_path, centroids, centerlines,
+                          first_frames)
 
 except:
     import pdb

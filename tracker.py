@@ -18,6 +18,7 @@ Created on Wed Oct 13 20:56:56 2021
      non-nictation tracking though as those worms will not change much in size
     -change how centerlines are structured internally (squeeze extra
      dimension, it should be frame, worm, [xs,ys])
+    -check size change working
 
 @author: PDMcClanahan
 """

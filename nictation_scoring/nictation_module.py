@@ -387,94 +387,21 @@ def compare_scores_list(man_scores, comp_scores):
     
 
 
-# from nictation_20220523\nictation_scoring_training\nict_scoring_functions
-# USED
-def load_manual_scores_csv(csv_file):
-    '''returns the manual nictation scored in <csv_file> as a list of arrays,
-    one array per worm'''
-    scores_arr = []
-    blank = np.nan
-    rc = 0
+
+def scale_scoring_features(dataframe, scaler, columns):
+    '''Scales the specified columns accorind to the scaler provided and 
+    returns a dataframe with those columns scaled'''
     
-    with open(csv_file, newline='') as csvfile:
-        csv_reader = csv.reader(csvfile, delimiter=',',quotechar='"')
-        for row in csv_reader:
-            score_row = np.empty(len(row))
-            for w in range(len(score_row)):
-                if rc > 0:
-                    
-                    if len(row[w]) == 0:
-                        score_row[w] = blank
-                    else:
-                        score_row[w] = int(row[w])
-                    
-            if rc == 1:
-                scores_arr = score_row
-            elif rc > 1:
-                scores_arr = np.vstack((scores_arr,score_row))  
-            rc = rc + 1
+    df_scaled = copy.deepcopy(dataframe)
+    df_scaled[columns] = scaler.transform(df_scaled[columns])
     
-    scores_arr = np.rot90(scores_arr)
-    scores_lst = []
-    for w in reversed(range(len(scores_arr))):
-        scores_lst.append(scores_arr[w][np.where(~np.isnan(scores_arr[w]))])
-    
-    return scores_lst
+    return df_scaled
 
 
-
-# def load_scores_csv(csv_path):
-#     '''Loads the manual or automatic scores <csv_path> as a list of numpy 
-#     arrays of int8 where each item is scores from one worm-track'''
-#     scores = []
-#     with open(csv_path) as csv_file:
-#         csv_reader = csv.reader(csv_file, delimiter=',')
-#         first_row = True
-#         for row in csv_reader:
-#             if first_row:
-#                 for w in row:
-#                     scores.append([])
-#                 first_row = False
-#             else:
-#                 for w in range(len(row)):
-#                     if row[w] != '':
-#                         scores[w].append(int(row[w]))
-        
-#         for w in range(len(scores)):
-#             scores[w] = np.array(scores[w],dtype = np.int8)
-                        
-#     return scores  
-
-# USED
-def nan_inf_mask_dataframe(dataframe):                               
-    rows_masked_nan = 0
-    rows_masked_inf = 0
-    to_mask = []
-    for column in dataframe: 
-        #print('NaN masking ' + column)
-        for i in range(len(dataframe[column])): 
-            if type(dataframe[column][i]) is not str and np.isnan(dataframe[column][i]) and i not in to_mask:
-                to_mask.append(i)
-                rows_masked_nan += 1
-            
-            if type(dataframe[column][i]) is not str and np.isinf(dataframe[column][i]) and i not in to_mask:
-                to_mask.append(i)
-                rows_masked_inf += 1
-    
-    #print(str(rows_masked_nan) + ' rows masked due to NaN.')
-    #print(str(rows_masked_inf) + ' rows masked due to inf.') # could be zero if NaN in same row found first (also vice versa above)
-    
-    df_masked = copy.deepcopy(dataframe)
-    df_masked.drop(to_mask,axis=0,inplace=True)
-    
-    return df_masked
-
-
-# USED
-def scale_data(dataframe,method = 'min max'):
-    
-    df = copy.deepcopy(dataframe)
-    
+def scale_training_features(dataframe, method, columns):
+    '''Fits a scaler to the specified columns, uses it to scale those columns,
+    and returns a dataframe containing only those columns scaled along with \
+    the scaler'''
     if method == 'min max':
         scaler = MinMaxScaler()
     elif method == 'variance':
@@ -483,12 +410,12 @@ def scale_data(dataframe,method = 'min max'):
         scaler = PowerTransformer(method = 'yeo-johnson')
     elif method == 'whiten':
         scaler = PCA(whiten = True)
-    
+    else:
+        print('Scaling method not recognized')
     
     df_scaled = copy.deepcopy(dataframe)
-    cols = dataframe.columns[3:]
-    scaler = scaler.fit(df_scaled[cols])
-    df_scaled[cols] = scaler.transform(df_scaled[cols])
+    scaler = scaler.fit(df_scaled[columns])
+    df_scaled[columns] = scaler.transform(df_scaled[columns])
     
     return df_scaled, scaler
 
@@ -532,38 +459,7 @@ def split(df_masked, prop_train = 0.75, rand_split = False):
         wi_test_spl
 
 
-# USED
-def learn_and_predict(X_train, X_test, y_train, y_test, model_type = 'k nearest neighbors'):
-    if model_type == 'logistic regression':
-        model = LogisticRegression(max_iter = 1000)
-    elif model_type == 'decision tree':
-        model = DecisionTreeClassifier()
-    elif model_type == 'k nearest neighbors':
-        model = KNeighborsClassifier()
-    elif model_type == 'linear discriminant analysis':
-        model = LinearDiscriminantAnalysis()
-    elif model_type == 'Gaussian naive Bayes':
-        model = GaussianNB()
-    elif model_type == 'support vector machine':
-        model = SVC(probability = True)
-        #print('WARNING: SVM probabilities may not correspond to scores.')
-    elif model_type == 'random forest':
-        model = RandomForestClassifier(max_features='sqrt')
-    elif model_type == 'neural network':
-        model = MLPClassifier()
-    else:
-        print('WARNING: model type "'+model_type+'" not recognized!')
-    model.fit(X_train, y_train)
-    print('Accuracy of ',model_type,' classifier on training set: {:.2f}'
-         .format(model.score(X_train, y_train)))
-    print('Accuracy of ',model_type,' classifier on test set: {:.2f}'
-         .format(model.score(X_test, y_test)))
-    train_acc = model.score(X_train, y_train)
-    test_acc = model.score(X_test, y_test)
-    predictions = model.predict(X_test)
-    probabilities = model.predict_proba(X_test)
-    
-    return model, train_acc, test_acc, probabilities, predictions
+
 
 
 
@@ -846,22 +742,6 @@ def calculate_metafeatures(df,fps):
 
 
 
-# def split_man_scores(man_scores, wi):
-#     '''Returns a list of arrays of manual scores based on worm information
-#     <wi>'''
-    
-#     man_scores = np.array(man_scores,dtype = object)
-#     man_scores_subset = []
-#     worms = np.unique(np.array(wi['worm'])).astype(np.int32)
-#     frames = np.array(wi['frame']).astype(np.int32)
-    
-#     for w in worms:
-#         man_scores_subset.append(
-#             man_scores[w][frames[np.where(np.array(wi['worm'])==w)]])
-    
-#     return man_scores_subset
-
-
 
 import numpy as np
 import pandas as pd
@@ -871,8 +751,6 @@ from sklearn.model_selection import train_test_split
 
 testing = False
 
-
-# PREPROCESSING
 
 def load_manual_scores_csv(csv_file):
     '''returns the manual nictation scored in <csv_file> as a list of arrays,
@@ -912,47 +790,15 @@ def load_manual_scores_csv(csv_file):
 
 # returns a dataframe with       
 def nan_inf_mask_dataframe(dataframe):                               
-    rows_masked_nan = 0
-    rows_masked_inf = 0
-    to_mask = []
-    for column in dataframe: #print(column)
-        for i in range(len(dataframe[column])): 
-            if type(dataframe[column][i]) is not str and np.isnan(dataframe[column][i]) and i not in to_mask:
-                to_mask.append(i)
-                rows_masked_nan += 1
-            
-            if type(dataframe[column][i]) is not str and np.isinf(dataframe[column][i]) and i not in to_mask:
-                to_mask.append(i)
-                rows_masked_inf += 1
-    
-    print(str(rows_masked_nan) + ' rows masked due to NaN.')
-    print(str(rows_masked_inf) + ' rows masked due to inf.') # could be zero if NaN in same row found first (also vice versa above)
+    '''Removes all -np.inf, np.inf, and np.nan values from dataframe and 
+    resets the indices'''
     
     df_masked = copy.deepcopy(dataframe)
-    df_masked.drop(to_mask,axis=0,inplace=True)
+    df_masked.replace([np.inf, -np.inf], np.nan, inplace=True)
+    df_masked = df_masked.dropna().reset_index(drop=True)
     
     return df_masked
     
-
-
-def scale_data(dataframe, scaler = None ,method = 'min max'):
-    
-    if scaler is None:
-        if method == 'min max':
-            scaler = MinMaxScaler()
-        elif method == 'variance':
-            scaler = StandardScaler()
-        elif method == 'Gaussian':
-            scaler = PowerTransformer(method = 'yeo-johnson')
-        elif method == 'whiten':
-            scaler = PCA(whiten = True)
-    
-    df_scaled = copy.deepcopy(dataframe)
-    cols = dataframe.columns[3:]
-    df_scaled[cols] = scaler.fit_transform(df_scaled[cols])
-    
-    return df_scaled, scaler
-
 
 
 def shuffle(df_masked,prop_train = 0.75):
@@ -999,10 +845,10 @@ def scramble_df_col(df, cols_to_scramble, rand_rand = False):
     return df_scr
 
 
-# shuffled:
-# logistic regression (can fail to converge w/ default 100 iterations)
-def learn_and_predict(X_train, X_test, y_train, y_test, 
-                      model_type = 'k nearest neighbors'):
+
+
+# USED
+def learn_and_predict(X_train, X_test, y_train, y_test, model_type = 'k nearest neighbors'):
     if model_type == 'logistic regression':
         model = LogisticRegression(max_iter = 1000)
     elif model_type == 'decision tree':
@@ -1015,7 +861,7 @@ def learn_and_predict(X_train, X_test, y_train, y_test,
         model = GaussianNB()
     elif model_type == 'support vector machine':
         model = SVC(probability = True)
-        print('WARNING: SVM probabilities may not correspond to scores.')
+        #print('WARNING: SVM probabilities may not correspond to scores.')
     elif model_type == 'random forest':
         model = RandomForestClassifier(max_features='sqrt')
     elif model_type == 'neural network':
@@ -1025,21 +871,20 @@ def learn_and_predict(X_train, X_test, y_train, y_test,
     model.fit(X_train, y_train)
     print('Accuracy of ',model_type,' classifier on training set: {:.2f}'
          .format(model.score(X_train, y_train)))
-    try:
-        print('Accuracy of ',model_type,' classifier on test set: {:.2f}'
-             .format(model.score(X_test, y_test)))
-    except:
-        import pdb; pdb.set_trace()
+    print('Accuracy of ',model_type,' classifier on test set: {:.2f}'
+         .format(model.score(X_test, y_test)))
     train_acc = model.score(X_train, y_train)
     test_acc = model.score(X_test, y_test)
     predictions = model.predict(X_test)
     probabilities = model.predict_proba(X_test)
+    
     return model, train_acc, test_acc, probabilities, predictions
 
 
 
-def calculate_features(vid_file):
+def calculate_features(vid_file, tracking_method = 'mRCNN'):
     
+    tracking_method = '_' + tracking_method
     
     gap = 1
     halfwidth = 88
@@ -1047,15 +892,18 @@ def calculate_features(vid_file):
     
     # load centroids, first frames, centerlines, and centerline flags
     cents, ffs  = dmm.load_centroids_csv(
-        os.path.splitext(vid_file)[0] + r'_tracking\centroids.csv')
+        os.path.splitext(vid_file)[0] + tracking_method + \
+            r'_tracking\centroids.csv')
     
     clns, cln_flags = dmm.load_centerlines_csv(
-        os.path.splitext(vid_file)[0] + r'_tracking\centerlines')
+        os.path.splitext(vid_file)[0] + tracking_method + \
+            r'_tracking\centerlines')
 
     
     # load tracking parameters
     params = dmm.load_parameter_csv(
-        os.path.splitext(vid_file)[0] + r'_tracking\tracking_parameters.csv')
+        os.path.splitext(vid_file)[0] + tracking_method \
+            + r'_tracking\tracking_parameters.csv')
     
     
     vid = cv2.VideoCapture(vid_file)
@@ -1144,7 +992,7 @@ def calculate_features(vid_file):
     
     
     # save indicator values
-    df.to_csv(os.path.splitext(vid_file)[0] + 
+    df.to_csv(os.path.splitext(vid_file)[0] + tracking_method + \
               r'_tracking\nictation_features.csv', index = False)
     
 
@@ -1158,11 +1006,11 @@ if __name__ == '__main__':
         # calculate_features(vf)
         
         
-        vf = r"C:\Users\Temmerman Lab\Desktop\Celegans_nictation_dataset\Ce_R2_d21.avi"
-        calculate_features(vf)
+        # vf = r"C:\Users\Temmerman Lab\Desktop\Celegans_nictation_dataset\Ce_R2_d21.avi"
+        # calculate_features(vf)
         
-        vf = r"C:\Users\Temmerman Lab\Desktop\Celegans_nictation_dataset\Ce_R3_d06.avi"
-        calculate_features(vf)
+        # vf = r"C:\Users\Temmerman Lab\Desktop\Celegans_nictation_dataset\Ce_R3_d06.avi"
+        # calculate_features(vf)
 
         
         # vid_dir = r"C:\\Users\\Temmerman Lab\\Desktop\\Celegans_nictation_dataset"
@@ -1171,6 +1019,17 @@ if __name__ == '__main__':
         #     if f[-4:] == '.avi' and f[:-4]+'_tracking' in file_list:
         #         calculate_features(vid_dir + '\\' + f)
         
+        # vid_dir = r"D:\Pat working\Scarpocapsae_nictation_dataset"
+        # file_list = os.listdir(vid_dir)
+        # for f in file_list[0:]:
+        #     if f[-4:] == '.avi' and f[:-4]+'_mRCNN_tracking' in file_list:
+        #         calculate_features(vid_dir + '\\' + f)
+                
+        vid_dir = r"D:\Data_flp-7_downsampled_5min"
+        file_list = os.listdir(vid_dir)
+        for f in file_list[0:]:
+            if f[-4:] == '.avi' and f[:-4]+'_mRCNN_tracking' in file_list:
+                calculate_features(vid_dir + '\\' + f)
         
         # vf = r"C:\Users\Temmerman Lab\Desktop\test_data_for_tracking\R1d4_first_four.avi"
         # calculate_features(vf)
