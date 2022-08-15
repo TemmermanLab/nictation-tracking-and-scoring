@@ -75,52 +75,26 @@ def initiation_rate(scores, only_active = True, fps = 5):
     nictating. If <only_active> is true, only transitions from crawling to 
     waving are counted, and only crawling is counted as time not nictating.'''
     
-    num_transitions = 0
-    denominator = 0
+    trans_mat = np.zeros((5,5))
+    for wt in range(len(scores)):
+        for f in range(len(scores[wt])-1):
+            trans_mat[int(scores[wt][f]+1),int(scores[wt][f+1]+1)] += 1
     
     if only_active:
+        num = trans_mat[2,3]
+        denom = np.sum(trans_mat[2,:])
         
-        for ws in scores:
-            
-            if len(ws) > 0:
-            
-                if ws[0] == 1:
-                    denominator += 1
-                
-                for f in range(1,len(ws)):
-                    
-                    if ws[f-1] == 1 and ws[f] == 2:
-                        num_transitions += 1
-                    
-                    if ws[f] == 1:
-                        denominator += 1
     else:
+        num = trans_mat[2,3] + trans_mat[2,4] + trans_mat[1,3] + trans_mat[1,4]
+        denom = np.sum(trans_mat[1:3,:])
         
-        for ws in scores:
-            
-            if len(ws) > 0:
-            
-                if ws[0] == 1 or ws[0] == 0:
-                    denominator += 1
-                
-                for f in range(1,len(ws)):
-                    
-                    if ws[f-1] == 1 and ws[f] == 2:
-                        num_transitions += 1
-                    elif ws[f-1] == 1 and ws[f] == 3:
-                        num_transitions += 1
-                    elif ws[f-1] == 0 and ws[f] == 2:
-                        num_transitions += 1
-                    elif ws[f-1] == 0 and ws[f] == 3:
-                        num_transitions += 1
-                    
-                    if ws[f] == 1 or ws[f] == 0:
-                        denominator += 1
-                    
-    init_rate = num_transitions / denominator
+    if denom != 0:
+        IR = fps * (num / denom)
+    else:
+        IR = np.nan
     
-    return init_rate * (1/fps) # Hz
-
+    return IR
+    
 
 
 def stopping_rate(scores, only_active = True, fps = 5):
@@ -129,54 +103,25 @@ def stopping_rate(scores, only_active = True, fps = 5):
     nictating. If <only_active> is true, only transitions from waving to 
     crawling are counted, and only waving is counted as time nictating.''' 
     
-    num_transitions = 0
-    denominator = 0
+    trans_mat = np.zeros((5,5))
+    for wt in range(len(scores)):
+        for f in range(len(scores[wt])-1):
+            trans_mat[int(scores[wt][f]+1),int(scores[wt][f+1]+1)] += 1
     
     if only_active:
+        num = trans_mat[3,2]
+        denom = np.sum(trans_mat[3,:])
         
-        if len(ws) > 0:
-        
-            for ws in scores:
-                
-                if ws[0] == 2:
-                    denominator += 1
-                
-                for f in range(1,len(ws)):
-                    
-                    if ws[f-1] == 2 and ws[f] == 1:
-                        num_transitions += 1
-                    
-                    if ws[f] == 2:
-                        denominator += 1
     else:
+        num = trans_mat[3,2] + trans_mat[4,2] + trans_mat[3,1] + trans_mat[4,1]
+        denom = np.sum(trans_mat[3:5,:])
         
-        for ws in scores:
-            
-            if len(ws) > 0:
-            
-                if ws[0] == 2 or ws[0] == 3:
-                    denominator += 1
-                
-                for f in range(1,len(ws)):
-                    
-                    if ws[f-1] == 2 and ws[f] == 1:
-                        num_transitions += 1
-                    elif ws[f-1] == 3 and ws[f] == 1:
-                        num_transitions += 1
-                    elif ws[f-1] == 2 and ws[f] == 0:
-                        num_transitions += 1
-                    elif ws[f-1] == 3 and ws[f] == 0:
-                        num_transitions += 1
-                    
-                    if ws[f] == 2 or ws[f] == 3:
-                        denominator += 1
-    
-    if denominator == 0:
-        stop_rate = np.nan
+    if denom != 0:
+        SR = fps * (num / denom)
     else:
-        stop_rate = num_transitions / denominator
+        SR = np.nan
     
-    return stop_rate * (1/fps) # Hz
+    return SR
 
 
 def nictation_duration(scores, exclude_partial_episodes = False, 

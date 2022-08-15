@@ -398,6 +398,8 @@ def scale_scoring_features(dataframe, scaler, columns):
     return df_scaled
 
 
+
+
 def scale_training_features(dataframe, method, columns):
     '''Fits a scaler to the specified columns, uses it to scale those columns,
     and returns a dataframe containing only those columns scaled along with \
@@ -884,7 +886,7 @@ def learn_and_predict(X_train, X_test, y_train, y_test, model_type = 'k nearest 
 
 def calculate_features(vid_file, tracking_method = 'mRCNN'):
     
-    tracking_method = '_' + tracking_method
+    tracking_method = ''#'_' + tracking_method
     
     gap = 1
     halfwidth = 88
@@ -1013,11 +1015,11 @@ if __name__ == '__main__':
         # calculate_features(vf)
 
         
-        # vid_dir = r"C:\\Users\\Temmerman Lab\\Desktop\\Celegans_nictation_dataset"
-        # file_list = os.listdir(vid_dir)
-        # for f in file_list[70:]:
-        #     if f[-4:] == '.avi' and f[:-4]+'_tracking' in file_list:
-        #         calculate_features(vid_dir + '\\' + f)
+        vid_dir = r"C:\\Users\\Temmerman Lab\\Desktop\\Celegans_nictation_dataset"
+        file_list = os.listdir(vid_dir)
+        for f in file_list[24:]:
+            if f[-4:] == '.avi' and f[:-4]+'_tracking' in file_list:
+                calculate_features(vid_dir + '\\' + f)
         
         # vid_dir = r"D:\Pat working\Scarpocapsae_nictation_dataset"
         # file_list = os.listdir(vid_dir)
@@ -1025,11 +1027,11 @@ if __name__ == '__main__':
         #     if f[-4:] == '.avi' and f[:-4]+'_mRCNN_tracking' in file_list:
         #         calculate_features(vid_dir + '\\' + f)
                 
-        vid_dir = r"D:\Data_flp-7_downsampled_5min"
-        file_list = os.listdir(vid_dir)
-        for f in file_list[0:]:
-            if f[-4:] == '.avi' and f[:-4]+'_mRCNN_tracking' in file_list:
-                calculate_features(vid_dir + '\\' + f)
+        # vid_dir = r"D:\Data_flp-7_downsampled_5min"
+        # file_list = os.listdir(vid_dir)
+        # for f in file_list[0:]:
+        #     if f[-4:] == '.avi' and f[:-4]+'_tracking' in file_list:
+        #         calculate_features(vid_dir + '\\' + f)
         
         # vf = r"C:\Users\Temmerman Lab\Desktop\test_data_for_tracking\R1d4_first_four.avi"
         # calculate_features(vf)
