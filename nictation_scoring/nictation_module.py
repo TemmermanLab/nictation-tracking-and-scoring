@@ -422,7 +422,7 @@ def scale_training_features(dataframe, method, columns):
     return df_scaled, scaler
 
 
-# USED
+
 def split(df_masked, prop_train = 0.75, rand_split = False):
     '''Splits the data into training and test X (features), y (manual scores),
     and wi (worm number and frame) at <prop_train>.  The index at which the
@@ -459,8 +459,6 @@ def split(df_masked, prop_train = 0.75, rand_split = False):
     
     return X_train_spl, X_test_spl, y_train_spl, y_test_spl, wi_train_spl, \
         wi_test_spl
-
-
 
 
 
@@ -815,18 +813,6 @@ def shuffle(df_masked,prop_train = 0.75):
 
 
 
-# def split_scores_by_wormtrack(scores, worm_info):
-#     '''Splits the scores into a list of lists where each sublist contains the
-#     behavior scores from a single wormtrack'''
-    
-#     scores_by_wormtrack = []
-#     wi = np.array((worm_info['worm']))
-#     scores = np.array(scores)
-#     for w in np.unique(wi):
-#         scores_by_wormtrack.append(scores[np.where(wi == w)])
-        
-#     return scores_by_wormtrack
-
 # MACHINE LEARNING MODELS
 
 
@@ -850,7 +836,9 @@ def scramble_df_col(df, cols_to_scramble, rand_rand = False):
 
 
 # USED
-def learn_and_predict(X_train, X_test, y_train, y_test, model_type = 'k nearest neighbors'):
+def learn_and_predict(X_train, X_test, y_train, y_test,
+                      model_type = 'k nearest neighbors', print_acc = False):
+    
     if model_type == 'logistic regression':
         model = LogisticRegression(max_iter = 1000)
     elif model_type == 'decision tree':
@@ -870,11 +858,16 @@ def learn_and_predict(X_train, X_test, y_train, y_test, model_type = 'k nearest 
         model = MLPClassifier()
     else:
         print('WARNING: model type "'+model_type+'" not recognized!')
+    
     model.fit(X_train, y_train)
-    print('Accuracy of ',model_type,' classifier on training set: {:.2f}'
-         .format(model.score(X_train, y_train)))
-    print('Accuracy of ',model_type,' classifier on test set: {:.2f}'
-         .format(model.score(X_test, y_test)))
+    
+    if print_acc:
+        print('Accuracy of ',model_type,' classifier on training set: {:.2f}'
+             .format(model.score(X_train, y_train)))
+        
+        print('Accuracy of ',model_type,' classifier on test set: {:.2f}'
+             .format(model.score(X_test, y_test)))
+    
     train_acc = model.score(X_train, y_train)
     test_acc = model.score(X_test, y_test)
     predictions = model.predict(X_test)
