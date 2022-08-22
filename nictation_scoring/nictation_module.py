@@ -10,7 +10,8 @@ calculating features and nictation metrics are in separate files.
 Issues and improvements:
     
     -Evaluate models only takes training data from one video
-    -Currently featured have 16 digits, they could do with fewer
+    -Currently features have 16 digits, they could do with fewer
+    -This file is very disorganized
 
 @author: Temmerman Lab
 """
@@ -61,7 +62,7 @@ import nictation_metrics as nict_met
 import tracker as trkr
 import data_management_module as dmm
 
-# USED
+
 def evaluate_models_accuracy(vid_file, **kwargs):
     '''Trains and tests several types of machine learning algorithms based on
     the features calculated from and manual scores provided for <vid_file>
@@ -752,9 +753,11 @@ from sklearn.model_selection import train_test_split
 testing = False
 
 
-def load_manual_scores_csv(csv_file):
-    '''returns the manual nictation scored in <csv_file> as a list of arrays,
-    one array per worm'''
+def load_manual_scores_csv(csv_file, simplify = True):
+    '''Returns the manual nictation scored in <csv_file> as a list of arrays,
+    one array per worm.  If <simplify> is True, then it changes nictation
+    scores from quiescent / crawling / waving / standing to recumbent / 
+    nictating'''
     scores_arr = []
     blank = np.nan
     rc = 0
@@ -777,6 +780,12 @@ def load_manual_scores_csv(csv_file):
                 scores_arr = np.vstack((scores_arr,score_row))  
             rc = rc + 1
     
+    if simplify:
+        scores_arr[np.where(scores_arr == 1)] = 0
+        scores_arr[np.where(scores_arr == 2)] = 1
+        scores_arr[np.where(scores_arr == 3)] = 1
+
+
     scores_arr = np.rot90(scores_arr)
     scores_lst = []
     for w in reversed(range(len(scores_arr))):
@@ -785,7 +794,7 @@ def load_manual_scores_csv(csv_file):
     return scores_lst
 
 
-
+csv_file = r'D:\Pat working\Celegans_nictation_dataset_no_videos\Ce_R2_d21_tracking\manual_nictation_scores.csv'
 
 
 # returns a dataframe with       
