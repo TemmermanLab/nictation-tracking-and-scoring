@@ -837,7 +837,7 @@ def scramble_df_col(df, cols_to_scramble, rand_rand = False):
 
 # USED
 def learn_and_predict(X_train, X_test, y_train, y_test,
-                      model_type = 'k nearest neighbors', print_acc = False):
+                      model_type = 'k nearest neighbors', print_acc = True):
     
     if model_type == 'logistic regression':
         model = LogisticRegression(max_iter = 1000)
