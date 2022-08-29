@@ -69,24 +69,33 @@ def nictation_ratio(scores, only_active = True):
     return nict_ratio # unitless
 
 
-def initiation_rate(scores, only_active = True, fps = 5):
+def initiation_rate(scores, only_active = True, fps = 5, binary = True):
     '''takes a list of nictation behavior scores and finds the number of 
     transitions from not nictating to nictating divided by the total time not
     nictating. If <only_active> is true, only transitions from crawling to 
     waving are counted, and only crawling is counted as time not nictating.'''
     
-    trans_mat = np.zeros((5,5))
-    for wt in range(len(scores)):
-        for f in range(len(scores[wt])-1):
-            trans_mat[int(scores[wt][f]+1),int(scores[wt][f+1]+1)] += 1
-    
-    if only_active:
-        num = trans_mat[2,3]
-        denom = np.sum(trans_mat[2,:])
+    if not binary:
+        trans_mat = np.zeros((5,5))
+        for wt in range(len(scores)):
+            for f in range(len(scores[wt])-1):
+                trans_mat[int(scores[wt][f]+1),int(scores[wt][f+1]+1)] += 1
         
+        if only_active:
+            num = trans_mat[2,3]
+            denom = np.sum(trans_mat[2,:])
+            
+        else:
+            num = trans_mat[2,3] + trans_mat[2,4] + trans_mat[1,3] + trans_mat[1,4]
+            denom = np.sum(trans_mat[1:3,:])
     else:
-        num = trans_mat[2,3] + trans_mat[2,4] + trans_mat[1,3] + trans_mat[1,4]
-        denom = np.sum(trans_mat[1:3,:])
+        
+        trans_mat = np.zeros((3,3))
+        for wt in range(len(scores)):
+            for f in range(len(scores[wt])-1):
+                trans_mat[int(scores[wt][f]+1),int(scores[wt][f+1]+1)] += 1
+        num = trans_mat[1,2]
+        denom = np.sum(trans_mat[1,:])
         
     if denom != 0:
         IR = fps * (num / denom)
@@ -97,24 +106,32 @@ def initiation_rate(scores, only_active = True, fps = 5):
     
 
 
-def stopping_rate(scores, only_active = True, fps = 5):
+def stopping_rate(scores, only_active = True, fps = 5, binary = True):
     '''takes a list of nictation behavior scores and finds the number of 
     transitions from nictating to not nictating divided by the total time
     nictating. If <only_active> is true, only transitions from waving to 
     crawling are counted, and only waving is counted as time nictating.''' 
     
-    trans_mat = np.zeros((5,5))
-    for wt in range(len(scores)):
-        for f in range(len(scores[wt])-1):
-            trans_mat[int(scores[wt][f]+1),int(scores[wt][f+1]+1)] += 1
-    
-    if only_active:
-        num = trans_mat[3,2]
-        denom = np.sum(trans_mat[3,:])
+    if not binary:
+        trans_mat = np.zeros((5,5))
+        for wt in range(len(scores)):
+            for f in range(len(scores[wt])-1):
+                trans_mat[int(scores[wt][f]+1),int(scores[wt][f+1]+1)] += 1
         
+        if only_active:
+            num = trans_mat[3,2]
+            denom = np.sum(trans_mat[3,:])
+            
+        else:
+            num = trans_mat[3,2] + trans_mat[4,2] + trans_mat[3,1] + trans_mat[4,1]
+            denom = np.sum(trans_mat[3:5,:])
     else:
-        num = trans_mat[3,2] + trans_mat[4,2] + trans_mat[3,1] + trans_mat[4,1]
-        denom = np.sum(trans_mat[3:5,:])
+        trans_mat = np.zeros((3,3))
+        for wt in range(len(scores)):
+            for f in range(len(scores[wt])-1):
+                trans_mat[int(scores[wt][f]+1),int(scores[wt][f+1]+1)] += 1
+        num = trans_mat[2,1]
+        denom = np.sum(trans_mat[2,:])
         
     if denom != 0:
         SR = fps * (num / denom)

@@ -108,8 +108,8 @@ def evaluate_models_accuracy(vid_file, **kwargs):
     
     for sm in range(len(scaling_methods)):
         if scaling_methods[sm] != 'none':
-            df_scaled, scaler = scale_data(df_masked, 
-                                           method = scaling_methods[sm])
+            df_scaled, scaler = scale_training_features(df_masked, method,
+                                                        df_masked.columns[3:])
         else:
             df_scaled = copy.deepcopy(df_masked)
         
@@ -138,7 +138,8 @@ def evaluate_models_accuracy(vid_file, **kwargs):
                 # heatmap_acc[mt,2*sm:2*sm+2] = [train_acc,test_acc]
 
 
-def combine_and_prepare_man_scores_and_features(vid_file, score_file = None):
+def combine_and_prepare_man_scores_and_features(vid_file, score_file = None, 
+                                                simplify = True):
     '''Loads manual scores and features from the same video and combines and
     nan-masks them in preparation for training a classifier'''
     
@@ -146,9 +147,9 @@ def combine_and_prepare_man_scores_and_features(vid_file, score_file = None):
     if score_file is None:
         man_scores_lst = load_manual_scores_csv(
             os.path.splitext(vid_file)[0] + \
-            r'_tracking/manual_nictation_scores.csv')
+            r'_tracking/manual_nictation_scores.csv', simplify)
     else:
-        man_scores_lst = load_manual_scores_csv(score_file)
+        man_scores_lst = load_manual_scores_csv(score_file, simplify)
     
     # load features
     df = pd.read_csv(os.path.splitext(vid_file)[0] + 
@@ -213,9 +214,8 @@ def evaluate_models_accuracy_2(vid_file_train, vid_file_test, **kwargs):
     
     for sm in range(len(scaling_methods)):
         if scaling_methods[sm] != 'none':
-            
-            df_train_scaled, scaler = scale_data(df_train, 
-                                           method = scaling_methods[sm])
+            df_train_scaled, scaler = scale_training_features(df_train, 
+                                    scaling_methods[sm], df_train.columns[3:])
             
             cols = df_test.columns[3:]
             df_test_scaled = copy.deepcopy(df_test)
@@ -373,6 +373,8 @@ def separate_list_by_worm(lst, df):
     return lst_by_worm
 
 
+
+
 def compare_scores_list(man_scores, comp_scores):
     '''Takes two lists of lists of worm track scores, compares them, and
     returns the overall accuracy.'''
@@ -528,7 +530,8 @@ def train_model(manual_score_file,feature_file,fps,scaling_method,model_type):
     # model_type = 'k nearest neighbors'
     
     # scale data
-    df_scaled, scaler = scale_data(df_masked, method = scaling_method)
+    df_scaled, scaler = scale_training_data(df_masked, scaling_method,
+                                            df_masked[3:])
     
     
     # split up training data, use 90% of it for training this time
@@ -794,9 +797,6 @@ def load_manual_scores_csv(csv_file, simplify = True):
     return scores_lst
 
 
-csv_file = r'D:\Pat working\Celegans_nictation_dataset_no_videos\Ce_R2_d21_tracking\manual_nictation_scores.csv'
-
-
 # returns a dataframe with       
 def nan_inf_mask_dataframe(dataframe):                               
     '''Removes all -np.inf, np.inf, and np.nan values from dataframe and 
@@ -1000,6 +1000,117 @@ def calculate_features(vid_file, tracking_method = 'mRCNN'):
               r'_tracking\nictation_features.csv', index = False)
     
 
+def Junho_Lee_scores(scores, activity, fps = 5, assume_active = True):
+    '''Scours the data for worm tracks that can be scored in a way similar to
+    that described in Lee 2012 and used by Bram in his studies'''
+    #import pdb; pdb.set_trace()
+    
+    
+    
+    # keep only tracks of at least 1 min duration
+    keep = np.where(np.array([len(s) for s in scores]) >= 300)[0]
+    scores = [scores[i] for i in keep]
+    activity = [activity[i] for i in keep]
+    
+    
+    # keep only tracks with no quiescence the first minute
+    # (the second minute is dealt with later)
+    if not assume_active:
+        keep = np.where(
+            np.array([np.min(np.array(a)[0:300]) for a in activity])>0)[0]
+        scores = [scores[i] for i in keep]
+        activity = [activity[i] for i in keep]
+    
+    
+    # keep only tracks with no censorship the first minute
+    # (the second minute is dealt with later)
+    keep = np.where(
+        np.array([np.min(np.array(s)[0:300]) for s in scores])>-1)[0]
+    scores = [scores[i] for i in keep]
+    activity = [activity[i] for i in keep]
+    
+    
+    # keep only tracks with where the worm is not nictating at the start
+    keep = np.where(np.array([s[0] == 0 for s in scores]) == 1)[0]
+    scores = [scores[i] for i in keep]
+    activity = [activity[i] for i in keep]
+    
+    
+    # trim tracks that are not nictating at 1 min to 1 min, also eliminate
+    # tracks with censored frames
+    keep = []
+    for i, s in enumerate(scores):
+        a = activity[i]
+        
+        # truncate to 1 min tracks that are not nictating at 1 min
+        if s[299] == 0:
+            s = s[0:300]
+            a = a[0:300]
+            keep.append(i)
+        
+        # keep tracks longer than one minute until they stop nictating or 
+        # reach 2 min, whichever is first, unless they become quiescent or are
+        # censored before this, or if they end prematurely while still
+        # nictating
+        elif s[299] == 1:
+            # truncate tracks to two min or end of nictation, whichever is
+            # first
+            try:
+                trunc_frame = np.where(s[300:]==0)[0][0]+300
+                if len(trunc_frame) == 0: trunc_frame = 600
+                kill = False
+            except:
+                # temporarily keep tracks that end before 2 min but are still
+                # nictating, but set <kill> to True
+                trunc_frame = np.max((600,len(s)))
+                kill = False
+                if trunc_frame == len(s):
+                    kill = True
+                
+            s = s[:trunc_frame]
+            a = a[:trunc_frame]
+        
+            # only keep these tracks if they do not contain censorship or
+            # quiescence and did not end prematurely while still nictating
+            # (kill)
+            if not assume_active:
+                if np.min(s) > -1 and np.min(a) > 0 and not kill:
+                    scores[i] = s
+                    activity[i] = a
+                    keep.append(i)
+            else:
+                if np.min(s) > -1 and not kill:
+                    scores[i] = s
+                    activity[i] = a
+                    keep.append(i)
+    
+    scores = [scores[i] for i in keep]
+    activity = [activity[i] for i in keep]        
+    
+    
+    # For each track, record the total amount of time, the amount of time
+    # spent nictating, and the number of nictation bouts (initiations).  Bouts
+    # ongoing at 2 min are truncated.
+    tot_time = np.array([len(s) / fps for s in scores])
+    nict_time = np.array([sum(s == 1) / fps for s in scores])
+    N = []
+    for s in scores:
+        n = 0
+        for i, f in enumerate(s[:-1]):
+            if f == 0 and s[i+1] == 1:
+                n += 1
+        N.append(n)
+    N = np.array(N)
+    
+    nict_rat = nict_time / tot_time
+    init_ind = N / (tot_time - nict_time)
+    avg_dur = N / nict_time
+    
+    # calculate total nictation time, nictation ratio, initiation index, and
+    # average duration for each track
+    
+    
+    return nict_rat, init_ind, avg_dur, tot_time, nict_time, N
 
 
 # testing
@@ -1008,6 +1119,8 @@ if __name__ == '__main__':
         
         # vf = r"C:\Users\Temmerman Lab\Dropbox\Temmerman_Lab\data\Celegans_vids_cropped_full\Luca_T2_Rep1_day60002 22-01-18 11-49-24_crop_1_to_300_inc_3.avi"
         # calculate_features(vf)
+        
+        
         
         
         # vf = r"C:\Users\Temmerman Lab\Desktop\Celegans_nictation_dataset\Ce_R2_d21.avi"
