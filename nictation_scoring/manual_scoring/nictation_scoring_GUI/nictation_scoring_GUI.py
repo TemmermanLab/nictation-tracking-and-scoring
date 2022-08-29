@@ -37,7 +37,7 @@ import pickle
 import copy
 import csv
 import pdb
-
+from functools import partial
 
 def nictation_scoring_GUI(vignette_path = 'null'):
     
@@ -96,10 +96,10 @@ def nictation_scoring_GUI(vignette_path = 'null'):
                             tuple(text_colors[score+1]), text_thickness,
                             cv2.LINE_AA)
         frame = cv2.putText(frame, 'frame '+str(f+1)+'/'+str(len(scores[w])),
-                            tuple(text_origin_2), font, font_scale, (0,0,0),
+                            tuple(text_origin_2), font, font_scale, (255,0,0),
                             text_thickness, cv2.LINE_AA)
         frame = cv2.putText(frame, 'worm '+str(w+1)+'/'+str(len(scores)),
-                            tuple(text_origin_3), font, font_scale, (0,0,0),
+                            tuple(text_origin_3), font, font_scale, (255,0,0),
                             text_thickness, cv2.LINE_AA)
         frame = Image.fromarray(frame)
         frame = frame.resize((600,600),Image.NEAREST) 
@@ -360,30 +360,34 @@ def nictation_scoring_GUI(vignette_path = 'null'):
     img_win.grid(row = 0, column = 0, columnspan = 6, padx = 2, pady = 2)
     
 
+
     # video control and scoring buttons
-    Button(nictation_GUI, text = "TOGGLE", command = toggle_score_button,
-           width = 11) .grid(row = 1, column = 0, padx=1, pady=1,
+    button_width = 11
+    Button(nictation_GUI, text = "TOGGLE (S)", command = toggle_score_button,
+           width = button_width) .grid(row = 1, column = 0, padx=1, pady=1,
                              sticky = W+E+N+S)
-    Button(nictation_GUI, text = "<", command = step_backward_button,
-           width = 11) .grid(row = 1, column = 1, padx=1, pady=1,
+    Button(nictation_GUI, text = "TOGGLE(A)", command = partial(toggle_score_button, False),
+           width = button_width) .grid(row = 1, column = 0, padx=1, pady=1,
                              sticky = W+E+N+S)
-    Button(nictation_GUI, text = "||", command = pause_button,width = 11) \
+    Button(nictation_GUI, text = "< (Left)", command = step_backward_button,
+           width = button_width) .grid(row = 1, column = 1, padx=1, pady=1,
+                             sticky = W+E+N+S)
+    Button(nictation_GUI, text = "|| (Down)", command = pause_button,width = 11) \
         .grid(row = 1, column = 2, padx=1, pady=1, sticky = W+E+N+S)
-    Button(nictation_GUI, text = ">", command = step_forward_button,
-           width = 11) .grid(row = 1, column = 3, padx=1, pady=1,
+    Button(nictation_GUI, text = "> (Right)", command = step_forward_button,
+           width = button_width) .grid(row = 1, column = 3, padx=1, pady=1,
                              sticky = W+E+N+S)
-    Button(nictation_GUI, text = ">>", command = play_button,width = 11) \
-        .grid(row = 1, column = 4, padx=1, pady=1, sticky = W+E+N+S)
-    Button(nictation_GUI, text = ">>>", command = fast_forward_button,
-           width = 11) .grid(row = 1, column = 5, padx=1, pady=1, \
+    ##Button(nictation_GUI, text = ">>", command = play_button,width = 11) \
+    ##    .grid(row = 1, column = 4, padx=1, pady=1, sticky = W+E+N+S)
+    Button(nictation_GUI, text = ">>> (Up)", command = fast_forward_button,
+           width = button_width) .grid(row = 1, column = 4, padx=1, pady=1, \
                              sticky = W+E+N+S)
-    
     
     # buttons for switch videos, saving scores, etc
-    Button(nictation_GUI, text = "PREVIOUS WORM", 
+    Button(nictation_GUI, text = "PREVIOUS WORM (D)", 
            command = previous_worm_button) .grid(row = 2, column = 0,
            columnspan = 2, padx=1, pady=1, sticky = W+E+N+S)
-    Button(nictation_GUI, text = "NEXT WORM", command = next_worm_button) \
+    Button(nictation_GUI, text = "NEXT WORM (F)", command = next_worm_button) \
         .grid(row = 2, column = 2, columnspan = 2, padx=1, pady=1,
               sticky = W+E+N+S)
     Button(nictation_GUI, text = "SAVE SCORES", 
