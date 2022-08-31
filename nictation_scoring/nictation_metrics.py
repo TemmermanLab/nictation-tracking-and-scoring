@@ -31,7 +31,7 @@ Issues and improvements:
 import numpy as np
 
 
-def nictation_ratio(scores, only_active = True):
+def nictation_ratio(scores, only_active = True, binary = True):
     '''takes a list of nictation scores and finds the number of frames scored
     as nictation and divides that by the number of frames scored (but not 
     censored).  If <only_active> is true, only waving and crawling are 
@@ -41,24 +41,34 @@ def nictation_ratio(scores, only_active = True):
     frames_nictating = 0
     frames_scored = 0
     
-    for ws in scores:
-        
-        for f in range(len(ws)):
+    if not binary:
+        for ws in scores:
             
-            if only_active:
+            for f in range(len(ws)):
                 
-                if ws[f] == 2:
+                if only_active:
+                    
+                    if ws[f] == 2:
+                        frames_nictating += 1
+                        frames_scored += 1
+                    elif ws[f] == 1:
+                        frames_scored += 1
+                else:
+                    
+                    if ws[f] == 2 or ws[f] == 3:
+                        frames_nictating += 1
+                        frames_scored += 1
+                    elif ws[f] == 1 or ws[f] == 0:
+                        frames_scored += 1
+    else:
+        for ws in scores:
+            for f in range(len(ws)):
+                if ws[f] == 1:
                     frames_nictating += 1
                     frames_scored += 1
-                elif ws[f] == 1:
+                elif ws[f] == 0:
                     frames_scored += 1
-            else:
-                
-                if ws[f] == 2 or ws[f] == 3:
-                    frames_nictating += 1
-                    frames_scored += 1
-                elif ws[f] == 1 or ws[f] == 0:
-                    frames_scored += 1
+
     
     
     if frames_scored == 0:

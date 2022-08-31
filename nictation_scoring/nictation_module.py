@@ -207,7 +207,7 @@ def evaluate_models_accuracy_2(vid_file_train, vid_file_test, **kwargs):
     
     accs = np.empty((len(scaling_methods),trials,len(model_types),len(sigmas)
                     ,3))
-    times = np.empty((len(scaling_methods),trials,len(model_types),3))
+    times = np.empty((len(scaling_methods),trials,len(model_types),2))
     NRs = copy.copy(accs)
     IRs = copy.copy(accs)
     SRs = copy.copy(accs)
