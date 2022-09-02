@@ -96,10 +96,10 @@ def nictation_scoring_GUI(vignette_path = 'null'):
                             tuple(text_colors[score+1]), text_thickness,
                             cv2.LINE_AA)
         frame = cv2.putText(frame, 'frame '+str(f+1)+'/'+str(len(scores[w])),
-                            tuple(text_origin_2), font, font_scale, (255,0,0),
+                            tuple(text_origin_2), font, font_scale, (16,78,139),
                             text_thickness, cv2.LINE_AA)
         frame = cv2.putText(frame, 'worm '+str(w+1)+'/'+str(len(scores)),
-                            tuple(text_origin_3), font, font_scale, (255,0,0),
+                            tuple(text_origin_3), font, font_scale, (16,78,139),
                             text_thickness, cv2.LINE_AA)
         frame = Image.fromarray(frame)
         frame = frame.resize((600,600),Image.NEAREST) 
