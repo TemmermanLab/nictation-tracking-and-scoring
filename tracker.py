@@ -19,6 +19,7 @@ Created on Wed Oct 13 20:56:56 2021
     -change how centerlines are structured internally (squeeze extra
      dimension, it should be frame, worm, [xs,ys])
     -check size change working
+    -store tracking method and model, if applicable, in tracking params .csv
 
 @author: PDMcClanahan
 """
@@ -108,14 +109,14 @@ class Tracker:
         
         if self.segmentation_method == 'mask_RCNN':
             self.save_path = self.vid_path + '//' + self.vid_name[:-4] + \
-                '_mRCNN_tracking'
+                '_tracking'
             self.save_path_troubleshooting = self.save_path + \
-                '//mRCNN_troubleshooting'
+                '//troubleshooting'
         elif self.segmentation_method == 'intensity':
             self.save_path = self.vid_path + '//' + self.vid_name[:-4] + \
-                '_intensity_tracking'
+                '_tracking'
             self.save_path_troubleshooting = self.save_path + \
-                '//intensity_troubleshooting'
+                '//_troubleshooting'
         
         if not os.path.isdir(self.save_path):
             os.mkdir(self.save_path)

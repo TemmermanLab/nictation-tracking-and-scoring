@@ -395,8 +395,11 @@ def scale_scoring_features(dataframe, scaler, columns):
     '''Scales the specified columns accorind to the scaler provided and 
     returns a dataframe with those columns scaled'''
     
-    df_scaled = copy.deepcopy(dataframe)
-    df_scaled[columns] = scaler.transform(df_scaled[columns])
+    if scaler is not None:
+        df_scaled = copy.deepcopy(dataframe)
+        df_scaled[columns] = scaler.transform(df_scaled[columns])
+    else:
+        df_scaled = copy.deepcopy(dataframe)
     
     return df_scaled
 
@@ -407,20 +410,26 @@ def scale_training_features(dataframe, method, columns):
     '''Fits a scaler to the specified columns, uses it to scale those columns,
     and returns a dataframe containing only those columns scaled along with \
     the scaler'''
-    if method == 'min max':
-        scaler = MinMaxScaler()
-    elif method == 'variance':
-        scaler = StandardScaler()
-    elif method == 'Gaussian':
-        scaler = PowerTransformer(method = 'yeo-johnson')
-    elif method == 'whiten':
-        scaler = PCA(whiten = True)
-    else:
-        print('Scaling method not recognized')
     
-    df_scaled = copy.deepcopy(dataframe)
-    scaler = scaler.fit(df_scaled[columns])
-    df_scaled[columns] = scaler.transform(df_scaled[columns])
+    if method != 'none':
+        if method == 'min max':
+            scaler = MinMaxScaler()
+        elif method == 'variance':
+            scaler = StandardScaler()
+        elif method == 'Gaussian':
+            scaler = PowerTransformer(method = 'yeo-johnson')
+        elif method == 'whiten':
+            scaler = PCA(whiten = True)
+        else:
+            print('Scaling method not recognized')
+        
+        df_scaled = copy.deepcopy(dataframe)
+        scaler = scaler.fit(df_scaled[columns])
+        df_scaled[columns] = scaler.transform(df_scaled[columns])
+    
+    else:
+        scaler = None
+        df_scaled = copy.deepcopy(dataframe)
     
     return df_scaled, scaler
 
@@ -1130,9 +1139,9 @@ if __name__ == '__main__':
         # calculate_features(vf)
 
         
-        vid_dir = r"C:\\Users\\Temmerman Lab\\Desktop\\Celegans_nictation_dataset"
+        vid_dir = r"D:\Data_flp_7_updated"
         file_list = os.listdir(vid_dir)
-        for f in file_list[24:]:
+        for f in file_list[:]:
             if f[-4:] == '.avi' and f[:-4]+'_tracking' in file_list:
                 calculate_features(vid_dir + '\\' + f)
         
