@@ -363,25 +363,23 @@ def nictation_scoring_GUI(vignette_path = 'null'):
 
     # video control and scoring buttons
     button_width = 11
-    Button(nictation_GUI, text = "TOGGLE (S)", command = toggle_score_button,
+    Button(nictation_GUI, text = "TOGGLE (A)", command = toggle_score_button,
            width = button_width) .grid(row = 1, column = 0, padx=1, pady=1,
                              sticky = W+E+N+S)
-    Button(nictation_GUI, text = "TOGGLE(A)", command = partial(toggle_score_button, False),
-           width = button_width) .grid(row = 1, column = 0, padx=1, pady=1,
-                             sticky = W+E+N+S)
-    Button(nictation_GUI, text = "< (Left)", command = step_backward_button,
+    Button(nictation_GUI, text = "TOGGLE (S)", command = partial(toggle_score_button, False),
            width = button_width) .grid(row = 1, column = 1, padx=1, pady=1,
                              sticky = W+E+N+S)
-    Button(nictation_GUI, text = "|| (Down)", command = pause_button,width = 11) \
-        .grid(row = 1, column = 2, padx=1, pady=1, sticky = W+E+N+S)
+    Button(nictation_GUI, text = "< (Left)", command = step_backward_button,
+           width = button_width) .grid(row = 1, column = 2, padx=1, pady=1,
+                             sticky = W+E+N+S)
     Button(nictation_GUI, text = "> (Right)", command = step_forward_button,
            width = button_width) .grid(row = 1, column = 3, padx=1, pady=1,
                              sticky = W+E+N+S)
-    ##Button(nictation_GUI, text = ">>", command = play_button,width = 11) \
-    ##    .grid(row = 1, column = 4, padx=1, pady=1, sticky = W+E+N+S)
     Button(nictation_GUI, text = ">>> (Up)", command = fast_forward_button,
            width = button_width) .grid(row = 1, column = 4, padx=1, pady=1, \
                              sticky = W+E+N+S)
+    Button(nictation_GUI, text = "|| (Down)", command = pause_button,width = 11) \
+        .grid(row = 1, column = 5, padx=1, pady=1, sticky = W+E+N+S)
     
     # buttons for switch videos, saving scores, etc
     Button(nictation_GUI, text = "PREVIOUS WORM (D)", 
