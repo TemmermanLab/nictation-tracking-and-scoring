@@ -47,15 +47,11 @@ from sklearn.metrics import classification_report
 from sklearn.metrics import confusion_matrix
 
 
-
-from pathlib import Path
-home = str(Path.home())
-sys.path.append(home + '//Dropbox//Temmerman_Lab//code//' + \
-                'tracking-and-scoring-nictation//nictation_scoring')
-sys.path.append(home + \
-                r'\Dropbox\Temmerman_Lab\code\tracking-and-scoring-nictation')
-
-
+# add needed module locations to path
+file_path = os.path.realpath(__file__)
+sys.path.append((os.path.split(file_path)[0]))
+sys.path.append(os.path.split((os.path.split(file_path)[0]))[0])
+    
 import nictation_features as nf
 import nictation_plotting as nict_plot
 import nictation_metrics as nict_met
