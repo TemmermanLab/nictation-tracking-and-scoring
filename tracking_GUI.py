@@ -170,6 +170,7 @@ def tracking_GUI():
         # del vid
         # for v in vid_names:
         #     data_f.save_params_csv(params,vid_path,v)
+
     
     def track_button():
         for v in range(len(trackers)):
@@ -186,7 +187,17 @@ def tracking_GUI():
         
         print(time.ctime())
 
-               
+
+    def calculate_features_button():
+        for v in range(len(trackers)):
+            pass
+    
+    
+    def score_button():
+        for v in range(len(trackers)):
+            pass
+
+         
     def exit_button():
         nonlocal tracking_GUI
         tracking_GUI.destroy()
@@ -213,23 +224,31 @@ def tracking_GUI():
     
     # to do text
     todo_txt = tk.Label(text = 'load a folder containing videos for tracking')
-    todo_txt.grid(row = 0, column = 0, columnspan = 5, padx = 0, pady = 0)
+    todo_txt.grid(row = 0, column = 0, columnspan = 6, padx = 0, pady = 0)
 
 
     # informational window
     vid_inf = Text(tracking_GUI, height = h, width = w)
     vid_inf.configure(font=("Courier", 12))
-    vid_inf.grid(row = 1, column = 0, columnspan = 5, padx = 0, pady = 0)
+    vid_inf.grid(row = 1, column = 0, columnspan = 6, padx = 0, pady = 0)
     
     
-    # buttons
-    tk.Button(tracking_GUI, text = "LOAD VIDEO FOLDER", command = load_video_folder_button, width = 10) .grid(row = 2, column = 0, padx=0, pady=0, sticky = 'W'+'E'+'N'+'S')
-    tk.Button(tracking_GUI, text = "MEASURE SCALE", command = measure_scale_button, width = 10) .grid(row = 2, column = 1, padx=0, pady=0, sticky = 'W'+'E'+'N'+'S')
-    tk.Button(tracking_GUI, text = "SET TRACKING PARAMETERS", command = set_parameters_button, width = 10) .grid(row = 2, column = 2, padx=0, pady=0, sticky = 'W'+'E'+'N'+'S')
-    tk.Button(tracking_GUI, text = "TRACK!", command = track_button,width = 10) .grid(row = 2, column = 3, padx=0, pady=0, sticky = 'W'+'E'+'N'+'S')
-    tk.Button(tracking_GUI, text = "EXIT", command = exit_button,width = 10) .grid(row = 2, column = 4, padx=0, pady=0, sticky = 'W'+'E'+'N'+'S')
+    # # buttons
+    # tk.Button(tracking_GUI, text = "LOAD VIDEO FOLDER", command = load_video_folder_button, width = 10) .grid(row = 2, column = 0, padx=0, pady=0, sticky = 'W'+'E'+'N'+'S')
+    # tk.Button(tracking_GUI, text = "MEASURE SCALE", command = measure_scale_button, width = 10) .grid(row = 2, column = 1, padx=0, pady=0, sticky = 'W'+'E'+'N'+'S')
+    # tk.Button(tracking_GUI, text = "SET TRACKING PARAMETERS", command = set_parameters_button, width = 10) .grid(row = 2, column = 2, padx=0, pady=0, sticky = 'W'+'E'+'N'+'S')
+    # tk.Button(tracking_GUI, text = "TRACK!", command = track_button,width = 10) .grid(row = 2, column = 3, padx=0, pady=0, sticky = 'W'+'E'+'N'+'S')
+    # tk.Button(tracking_GUI, text = "EXIT", command = exit_button,width = 10) .grid(row = 2, column = 4, padx=0, pady=0, sticky = 'W'+'E'+'N'+'S')
 
+    # new buttons
+    tk.Button(tracking_GUI, text = "LOAD VIDEO FOLDER", command = load_video_folder_button, width = 10) .grid(row = 2, column = 0, padx=0, pady=0, sticky = 'W'+'E'+'N'+'S')
+    tk.Button(tracking_GUI, text = "SET PARAMETERS", command = set_parameters_button, width = 10) .grid(row = 2, column = 1, padx=0, pady=0, sticky = 'W'+'E'+'N'+'S')
+    tk.Button(tracking_GUI, text = "TRACK", command = track_button, width = 10) .grid(row = 2, column = 2, padx=0, pady=0, sticky = 'W'+'E'+'N'+'S')
+    tk.Button(tracking_GUI, text = "CALCULATE FEATURES", command = calculate_features_button,width = 10) .grid(row = 2, column = 3, padx=0, pady=0, sticky = 'W'+'E'+'N'+'S')
+    tk.Button(tracking_GUI, text = "SCORE", command = score_button,width = 10) .grid(row = 2, column = 4, padx=0, pady=0, sticky = 'W'+'E'+'N'+'S')
+    tk.Button(tracking_GUI, text = "EXIT", command = exit_button,width = 10) .grid(row = 2, column = 5, padx=0, pady=0, sticky = 'W'+'E'+'N'+'S')
     
+
     tracking_GUI.mainloop()
 
 

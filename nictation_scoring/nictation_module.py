@@ -48,9 +48,9 @@ from sklearn.metrics import confusion_matrix
 
 
 # add needed module locations to path
-file_path = os.path.realpath(__file__)
-sys.path.append((os.path.split(file_path)[0]))
-sys.path.append(os.path.split((os.path.split(file_path)[0]))[0])
+file_name = os.path.realpath(__file__)
+sys.path.append((os.path.split(file_name)[0]))
+sys.path.append(os.path.split((os.path.split(file_name)[0]))[0])
     
 import nictation_features as nf
 import nictation_plotting as nict_plot
