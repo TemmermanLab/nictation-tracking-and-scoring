@@ -189,8 +189,8 @@ def tracking_GUI():
 
 
     def calculate_features_button():
-        for t in trackers:
-            t.calculate_features()
+        for v in range(len(trackers)):
+            pass
     
     
     def score_button():
@@ -213,7 +213,7 @@ def tracking_GUI():
     
     # GUI
     tracking_GUI = tk.Tk()
-    tracking_GUI.title('Tracking and Scoring GUI')
+    tracking_GUI.title('Tracking GUI')
     tracking_GUI.configure(background = "black")
     # get character size / line spacing in pixels
     chr_h_px = tkinter.font.Font(root = tracking_GUI, font=('Courier',12,NORMAL)).metrics('linespace')

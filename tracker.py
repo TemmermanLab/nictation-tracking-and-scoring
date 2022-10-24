@@ -48,6 +48,9 @@ import deformable_model as def_worm
 import data_management_module as dm
 import centerline_module as cm
 
+# for feature calculation and scoring
+sys.path.append(os.path.split(__file__)[0]+'\\nictation_scoring')
+import nictation_module as nm
 
 
 class Tracker:
@@ -448,6 +451,16 @@ class Tracker:
         self.create_summary_video(out_scale)
         
         
+
+    def calculate_features(self):
+        '''Wrapper for calculate features; calculates and saves features for
+        scoring behavior as csv files'''
+        nm.calculate_features(self.vid_path+'//'+self.vid_name)
+      
+        
+      
+    def score_behavior(self):
+        '''Wrapper for '''
 
 
     @staticmethod
