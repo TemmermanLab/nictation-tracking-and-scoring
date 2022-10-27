@@ -14,7 +14,8 @@ Issues / improvements:
     -no way to zoom image
     -possibly helpful info: 
     -no way to change frame being inspected
-    -cartoon showing worm size and distance threshold, and size threshold would help
+    -cartoon showing worm size and distance threshold, and size threshold
+     would help
     
 
 @author: PDMcClanahan
@@ -22,18 +23,21 @@ Issues / improvements:
 
 import cv2
 import numpy as np
-import copy
-import matplotlib.pyplot as plt
-import matplotlib
 import os
-import pdb, traceback, sys, code
-from scipy import interpolate
-from PIL import Image as Im, ImageTk, ImageDraw
+import pdb, traceback, sys
+from PIL import Image as Im, ImageTk
 import tkinter as tk
 from tkinter import filedialog, Label
 from tkinter import *
-import pickle
-import time
+
+import sys
+sys.path.append(os.path.split(__file__)[0])
+import tracker as tracker
+
+# find directories for mRCNN files and behavior model files
+mrcnn_path = os.path.split(__file__)[0] + '\\mask_RCNN'
+behavior_model_path = os.path.split(__file__)[0] + \
+    '\\nictation_scoring\models'
 
 
 def parameter_GUI(trackers):
@@ -54,6 +58,39 @@ def parameter_GUI(trackers):
     img, diff, smooth, bw, bw_sz, final = trackers[v].show_segmentation(v)
     
     
+    def choose_mrcnn_file_button():
+        nonlocal trackers
+            
+        root = tk.Tk()
+        mrcnn_file = tk.filedialog.askopenfilename(initialdir = mrcnn_path, \
+            title = "Select a mask R-CNN file (.pt) for tracking\
+            ...")
+        root.destroy()
+        
+        for t in trackers:
+            t.parameters['mRCNN_file'] = mrcnn_file
+        
+        enter_mrcnn_file.delete(0, 'end')
+        enter_mrcnn_file.insert(0,trackers[v].parameters['mRCNN_file'])
+    
+    
+    def choose_behavior_model_button():
+        nonlocal trackers
+            
+        root = tk.Tk()
+        behavior_model_file = tk.filedialog.askopenfilename(initialdir = \
+            behavior_model_path, title = \
+            "Select a model (.pkl) for scoring behavior...")
+        root.destroy()
+        
+        for t in trackers:
+            t.parameters['behavior_model_file'] = behavior_model_file
+        
+        enter_behavior_model_file.delete(0, 'end')
+        enter_behavior_model_file.insert(
+            0,trackers[v].parameters['behavior_model_file'])
+            
+            
     def update_images_button():
         print('Updating images...')
         nonlocal trackers, v, f
@@ -67,12 +104,14 @@ def parameter_GUI(trackers):
             if enter_bkgnd_meth.get() != trackers[v].parameters['bkgnd_meth']:
                 trackers[v].parameters['bkgnd_meth'] = enter_bkgnd_meth.get()
                 trackers[v].get_background()
-            trackers[v].parameters['bkgnd_nframes'] = int(enter_bkgnd_nframes.get())
+            trackers[v].parameters['bkgnd_nframes'] = \
+                int(enter_bkgnd_nframes.get())
             trackers[v].parameters['k_sig'] = float(enter_k_sig.get())
             trackers[v].parameters['min_f'] = int(enter_min_f.get())
             trackers[v].parameters['bw_thr'] = int(enter_bw_thr.get())
             trackers[v].parameters['d_thr'] = int(enter_d_thr.get())
-            trackers[v].parameters['area_bnds'] = (int(enter_min_sz.get()),int(enter_max_sz.get()))
+            trackers[v].parameters['area_bnds'] = \
+                (int(enter_min_sz.get()),int(enter_max_sz.get()))
         except:
             print('Enter numbers in all the fields')
             import pdb; pdb.set_trace()
@@ -80,21 +119,17 @@ def parameter_GUI(trackers):
         if enter_um_per_pix.get() == '' or enter_um_per_pix.get() == 'None':
             trackers[v].parameters['um_per_pix'] = 'None'
         else:
-            trackers[v].parameters['um_per_pix'] = float(enter_um_per_pix.get())
+            trackers[v].parameters['um_per_pix'] = \
+                float(enter_um_per_pix.get())
         
         if v < len(trackers) and f < trackers[v].num_frames:
-            try:
-                img, diff, smooth, bw, bw_sz, final = trackers[v].show_segmentation(f)
-            except:
-                import pdb
-                import sys
-                import traceback
-                extype, value, tb = sys.exc_info()
-                traceback.print_exc()
-                pdb.post_mortem(tb)
+            img, diff, smooth, bw, bw_sz, final = \
+                trackers[v].show_segmentation(f)
             update_win(img_type_ind)
+
         else:
             print('Enter in range video and frame numbers')
+      
             
     def cycle_image_button():
         nonlocal img_type_ind
@@ -103,9 +138,36 @@ def parameter_GUI(trackers):
             img_type_ind = 0
         print(img_type_ind)
         update_win(img_type_ind)
+      
         
     def find_scale_button():
-        pass        
+        nonlocal trackers
+        nonlocal enter_um_per_pix
+        root = tk.Tk()
+        scale_file = tk.filedialog.askopenfilename(
+            initialdir = trackers[0].vid_path, 
+            title = "Select a video or image to measure the scale...")
+        root.destroy()
+        if scale_file[-4:] in ['.avi','.mp4']:
+            vid = cv2.VideoCapture(scale_file)
+            ret,img = vid.read()
+            if len(np.shape(img)) == 3:
+                img = np.squeeze(img[:,:,0])
+        elif scale_file[-4:] in ['.bmp','.png','.jpg']:
+            img = cv2.imread(scale_file,cv2.IMREAD_GRAYSCALE)
+        else:
+            print(
+                'Please choose a supported file (avi, mp4, bmp, png, or jpg)')
+            img = []
+        
+        if len(img) != 0:
+            um_per_pix, scale_img = tracker.Tracker.draw_scale(img)
+            um_per_pix = round(um_per_pix,3)
+            for t in trackers:
+                t.parameters['um_per_pix'] = um_per_pix
+            enter_um_per_pix.delete(0, 'end')
+            enter_um_per_pix.insert(0,trackers[v].parameters['um_per_pix'])
+       
         
     def save_exit_button():
         
@@ -124,9 +186,8 @@ def parameter_GUI(trackers):
                 t.parameters['area_bnds'] = (int(enter_min_sz.get()),
                                              int(enter_max_sz.get()))
             except:
-                # import pdb; pdb.set_trace()
                 print('Enter numbers in all the fields')
-            #trackers[v].parameters['del_sz_thr'] = int(enter_del_sz_thr.get())
+            
             if enter_um_per_pix.get() == '':
                 t.parameters['um_per_pix'] = 'None'
             else:
@@ -134,14 +195,14 @@ def parameter_GUI(trackers):
                     t.parameters['um_per_pix'] = float(enter_um_per_pix.get())
                 except:
                     t.parameters['um_per_pix'] = enter_um_per_pix.get()
-        ###
         
         param_insp.destroy()
         param_insp.quit()
+
     
     def update_win(img_type_ind):
         nonlocal frame
-        # pdb.set_trace()
+        
         print(img_type_ind)
         if  img_type_ind == 0:
             frame = img
@@ -162,23 +223,6 @@ def parameter_GUI(trackers):
         img_win.configure(image = frame)
         img_win.update()
     
-    # def get_scale():
-    #     # get and load scale image
-    #     root = tk.Tk()
-    #         initialdir = os.path.dirname(vid_name)
-    #         scale_img_file = tk.filedialog.askopenfile(initialdir = '/', \
-    #             title = "Select the folder containing videos to be tracked \
-    #             ...")
-    #         root.destroy()
-    #     img = cv2.imread(scale_img_file,cv2.IMREAD_GRAYSCALE)
-    #     imgc = cv2.cvtColor(img,cv2.COLOR_GRAY2RGB)
-        
-    #     # display image
-    #     clicks_x,clicks_y = [],[]
-        
-        
-    #     # measure an object in the scale image
-    #     return um_per_pix
         
     # set up GUI
     param_insp = tk.Toplevel()
@@ -224,8 +268,9 @@ def parameter_GUI(trackers):
     enter_bkgnd_nframes.insert(0,trackers[v].parameters['bkgnd_nframes'])
     
     
-    Label (param_insp,text="Smoothing sigma:", bg = "black", fg = "white") \
-        .grid(row = 3, column = 0,padx=1, pady=1, sticky = W+E+N+S)
+    Label (param_insp,text="Smoothing sigma (\u03bcm):", bg = "black", 
+           fg = "white").grid(row = 3, column = 0,padx=1, pady=1,
+           sticky = W+E+N+S)
     enter_k_sig = Entry(param_insp, bg = "white")
     enter_k_sig.grid(row = 3, column = 1,padx=1, pady=1, sticky = W+E)
     enter_k_sig.insert(0,str(trackers[v].parameters['k_sig']))
@@ -247,14 +292,15 @@ def parameter_GUI(trackers):
     enter_bw_thr.insert(0,trackers[v].parameters['bw_thr'])
     
     
-    Label (param_insp,text="Distance threshold:", bg = "black", fg = "white")\
-        .grid(row = 4, column = 2,padx=1, pady=1, sticky = W+E+N+S)
+    Label (param_insp,text="Distance threshold (\u03bcm):", bg = "black",
+        fg = "white").grid(row = 4, column = 2,padx=1, pady=1,
+        sticky = W+E+N+S)
     enter_d_thr = Entry(param_insp, bg = "white")
     enter_d_thr.grid(row = 4, column = 3,padx=1, pady=1, sticky = W+E)
     enter_d_thr.insert(0,trackers[v].parameters['d_thr'])
     
     
-    Label (param_insp,text="Minimum area (integer):", bg = "black", 
+    Label (param_insp,text="Minimum area (\u03bcm\u00b2):", bg = "black", 
            fg = "white") .grid(row = 5, column = 0,padx=1, pady=1, 
                                sticky = W+E+N+S)
     enter_min_sz = Entry(param_insp, bg = "white")
@@ -262,7 +308,7 @@ def parameter_GUI(trackers):
     enter_min_sz.insert(0,trackers[v].parameters['area_bnds'][0])
     
     
-    Label (param_insp,text="Maximum area (integer)", bg = "black", 
+    Label (param_insp,text="Maximum area (\u03bcm\u00b2)", bg = "black", 
            fg = "white") .grid(row = 5, column = 2,padx=1, pady=1,
                                sticky = W+E+N+S)
     enter_max_sz = Entry(param_insp, bg = "white")
@@ -270,7 +316,7 @@ def parameter_GUI(trackers):
     enter_max_sz.insert(0,trackers[v].parameters['area_bnds'][1])
     
     
-    Label (param_insp,text="Size change threshold (percentage)", bg = "black",
+    Label (param_insp,text="Size change threshold (%)", bg = "black",
            fg = "white") .grid(row = 6, column = 0,padx=1, pady=1, 
                                sticky = W+E+N+S)
     enter_del_sz_thr = Entry(param_insp, bg = "black")
@@ -278,22 +324,41 @@ def parameter_GUI(trackers):
     #enter_del_sz_thr.insert(0,trackers[v].parameters['del_sz_thr'])
     
     
-    Button(param_insp,text="Scale in \u03bcm per pixel (float)", 
+    Button(param_insp,text="Scale (\u03bcm per pixel) (click for GUI)", 
            command = find_scale_button, bg = "black", fg = "white") \
         .grid(row = 6, column = 2,padx=1, pady=1, sticky = W+E+N+S)
     enter_um_per_pix = Entry(param_insp, bg = "white")
     enter_um_per_pix.grid(row = 6, column = 3,padx=1, pady=1, sticky = W+E)
     enter_um_per_pix.insert(0,trackers[v].parameters['um_per_pix'])
     
+    
+    Button(param_insp,text="mask R-CNN file (click to choose):", 
+           command = choose_mrcnn_file_button, bg = "black", fg = "white") \
+        .grid(row = 7, column = 0,padx=1, pady=1, sticky = W+E+N+S)
+    enter_mrcnn_file = Entry(param_insp, bg = "white")
+    enter_mrcnn_file.grid(row = 7, column = 1,padx=1, pady=1, sticky = W+E)
+    enter_mrcnn_file.insert(0,trackers[v].parameters['mRCNN_file'])
+    
+    
+    Button(param_insp,text="behavior model file (click to choose):", 
+           command = choose_behavior_model_button, bg = "black", 
+           fg = "white").grid(row = 7, column = 2,padx=1, pady=1,
+           sticky = W+E+N+S)
+    enter_behavior_model_file = Entry(param_insp, bg = "white")
+    enter_behavior_model_file.grid(
+        row = 7, column = 3,padx=1, pady=1, sticky = W+E)
+    enter_behavior_model_file.insert(
+        0,trackers[v].parameters['behavior_model_file'])
+    
     # set up buttons
     Button(param_insp, text = "COMPUTE BACKGROUND") \
-        .grid(row = 7, column = 0, padx=1, pady=1, sticky = W+E+N+S)
+        .grid(row = 8, column = 0, padx=1, pady=1, sticky = W+E+N+S)
     Button(param_insp, text = "UPDATE IMAGES",command = update_images_button)\
-        .grid(row = 7, column = 1, padx=1, pady=1, sticky = W+E+N+S)
+        .grid(row = 8, column = 1, padx=1, pady=1, sticky = W+E+N+S)
     Button(param_insp, text = "CYCLE IMAGE", command = cycle_image_button) \
-        .grid(row = 7, column = 2, padx=1, pady=1, sticky = W+E+N+S)
+        .grid(row = 8, column = 2, padx=1, pady=1, sticky = W+E+N+S)
     Button(param_insp, text = "SAVE AND EXIT", command = save_exit_button) \
-        .grid(row = 7, column = 3, padx=1, pady=1, sticky = W+E+N+S)
+        .grid(row = 8, column = 3, padx=1, pady=1, sticky = W+E+N+S)
     
     param_insp.mainloop()
     
@@ -305,11 +370,10 @@ if __name__ == '__main__':
     try:
         import sys
         sys.path.append(os.path.split(__file__)[0])
-        import tracker_classes as tracker
-        vid_name = r'C:\Users\Temmerman Lab\Dropbox\Temmerman_Lab\data\Bram_vids_cropped2\video_AX7163_A 21-09-23 15-37-15_crop_1_to_300_inc_3.avi'
+        import tracker as tracker
+        vid_name = r'C:\Users\PDMcClanahan\Dropbox\Temmerman_Lab\data\Celegans_vid_cropped_scaled\Luca_T2_Rep1_day60002 22-01-18 11-49-24_crop_1_to_300_inc_3_scl_0.5.avi'
         tracker_obj = tracker.Tracker(vid_name)
-        bkgnd_meth, bkgnd_nframes, k_sig, k_sz, bw_thr, sz_bnds, d_thr, \
-            del_sz_thr, um_per_pix, min_f = parameter_GUI([tracker_obj])
+        out = parameter_GUI([tracker_obj])
     except:
         import pdb
         import sys
