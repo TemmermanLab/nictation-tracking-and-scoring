@@ -194,8 +194,8 @@ def tracking_GUI():
     
     
     def score_button():
-        for v in range(len(trackers)):
-            pass
+        for t in trackers:
+            t.score_behavior()
 
          
     def exit_button():

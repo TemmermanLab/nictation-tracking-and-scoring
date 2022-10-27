@@ -981,7 +981,9 @@ def calculate_features(vid_file, tracking_method = 'mRCNN'):
                         'centroid_path_PC_var_product' : prod
                         }
             
-            df = df.append(new_row,ignore_index = True)
+            
+            df = pd.concat([df, pd.DataFrame(new_row, index = [0])], axis = 0,
+                           ignore_index=True)
 
             cl0 = copy.copy(cl)
     
@@ -1000,10 +1002,48 @@ def calculate_features(vid_file, tracking_method = 'mRCNN'):
     df = calculate_metafeatures(df,fps)
     
     
-    # save indicator values
+    # save feature values
     df.to_csv(os.path.splitext(vid_file)[0] + tracking_method + \
               r'_tracking\nictation_features.csv', index = False)
     
+
+def score_behavior(feature_file, behavior_model_file, behavior_sig, fps,
+                   save_path):
+    '''Applies the model and scaler in <behavior_model_file> to the features
+    in <feature_file> (the model needs to have been trained on the same types
+    of features), smooths the probabilities by <behavior_sig> * <fps>, and
+    saves the resulting scores and the original, unsmoothed probabilities as a
+    .csv in <save_path>'''
+    
+    # load model and scaler
+    with open(behavior_model_file, 'rb') as f: 
+        mod, scaler = pickle.load(f)
+    
+    # load features
+    df = pd.read_csv(feature_file)
+    df_masked = nan_inf_mask_dataframe(df)
+    cols = df.columns[2:]
+    df_scaled = scale_scoring_features(df_masked, scaler, cols)
+    df_ready = df_scaled[df_scaled.columns[2:]]
+        
+    # smooth predictions
+    probs = mod.predict_proba(df_ready)
+    probs_smooth = smooth_probabilities(probs, behavior_sig, fps)
+    categories = list(np.arange(-1,np.shape(probs)[1]-1))
+    predictions = probabilities_to_predictions(probs_smooth,
+                                                       categories)
+    # save predictions
+    df_preds_1 = copy.deepcopy(df_masked[['worm','frame']])
+    preds_dict = {} # empty dictionary
+    preds_dict['pred. behavior']=list(predictions)
+    for i in range(np.shape(probs)[1]):
+        preds_dict['prob. '+str(categories[i])] = list(probs[:,i])
+    df_preds_2 = pd.DataFrame(preds_dict)
+    df_preds = pd.concat([df_preds_1, df_preds_2], axis=1)
+    df_preds.to_csv(save_path + r'\computer_behavior_scores.csv',
+                    index = False)
+
+
 
 def Junho_Lee_scores(scores, activity, fps = 5, assume_active = True):
     '''Scours the data for worm tracks that can be scored in a way similar to

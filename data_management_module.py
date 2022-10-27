@@ -65,17 +65,20 @@ def load_parameter_csv(csv_filename):
                              44: None}
                 r[1] = r[1].translate(transdict).split(sep=' ')
                 r[1] =  [int(r[1][n]) for n in range(len(r[1]))]
-            elif r[0] == 'k_sig' or r[0] == 'um_per_pix':
+            elif r[0] == 'k_sig' or r[0] == 'um_per_pix' or \
+                r[0] == 'behavior_sig':
                 try:
                     r[1] = float(r[1])
                 except:
                     pass
                 
-            elif r[0] == 'bkgnd_meth': # string
+            elif r[0] == 'bkgnd_meth' or r[0] == 'mRCNN_file' or r[0] == \
+                'behavior_model_file': # strings
                 pass
+            
             else: # all other params should be integers
                 r[1] = int(r[1])
-             
+                    
             if r[0] != 'Parameter':
                 parameters[r[0]] = r[1]
     
