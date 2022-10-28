@@ -37,6 +37,7 @@ import tkinter.font
 from tkinter import ttk
 from tkinter import *
 import tkinter.filedialog as filedialog # necessary to avoid error
+from tkinter.messagebox import askyesno
 import numpy as np
 from PIL import Image, ImageTk
 import os
@@ -126,29 +127,29 @@ def tracking_GUI():
         load_folder()
         
         
-    def measure_scale_button():
-        nonlocal trackers
-        root = tk.Tk()
-        scale_file = tk.filedialog.askopenfilename(initialdir = trackers[0].vid_path, \
-            title = "Select a video or image to measure the scale \
-            ...")
-        root.destroy()
-        if scale_file[-4:] in ['.avi','.mp4']:
-            vid = cv2.VideoCapture(scale_file)
-            ret,img = vid.read()
-            if len(np.shape(img)) == 3:
-                img = np.squeeze(img[:,:,0])
-        elif scale_file[-4:] in ['.bmp','.png','.jpg']:
-            img = cv2.imread(scale_file,cv2.IMREAD_GRAYSCALE)
-        else:
-            print('Please choose a supported file (avi, mp4, bmp, png, or jpg)')
-            img = []
+    # def measure_scale_button():
+    #     nonlocal trackers
+    #     root = tk.Tk()
+    #     scale_file = tk.filedialog.askopenfilename(initialdir = trackers[0].vid_path, \
+    #         title = "Select a video or image to measure the scale \
+    #         ...")
+    #     root.destroy()
+    #     if scale_file[-4:] in ['.avi','.mp4']:
+    #         vid = cv2.VideoCapture(scale_file)
+    #         ret,img = vid.read()
+    #         if len(np.shape(img)) == 3:
+    #             img = np.squeeze(img[:,:,0])
+    #     elif scale_file[-4:] in ['.bmp','.png','.jpg']:
+    #         img = cv2.imread(scale_file,cv2.IMREAD_GRAYSCALE)
+    #     else:
+    #         print('Please choose a supported file (avi, mp4, bmp, png, or jpg)')
+    #         img = []
         
-        if len(img) != 0:
-            um_per_pix, scale_img = tracker.Tracker.draw_scale(img)
-            um_per_pix = round(um_per_pix,3)
-            for t in trackers:
-                t.parameters['um_per_pix'] = um_per_pix
+    #     if len(img) != 0:
+    #         um_per_pix, scale_img = tracker.Tracker.draw_scale(img)
+    #         um_per_pix = round(um_per_pix,3)
+    #         for t in trackers:
+    #             t.parameters['um_per_pix'] = um_per_pix
             
 
 
@@ -173,9 +174,19 @@ def tracking_GUI():
 
     
     def track_button():
-        for v in range(len(trackers)):
+        
+        # ask if user wants to also calulate features and score behavior
+        root = tk.Tk()
+        keep_going = askyesno(title='option to run full analysis now',
+                    message='Do you also want to calculate features and score behavior?')
+        root.destroy()
+        
+        for t in trackers:
             try:
-                trackers[v].track()
+                t.track()
+                if keep_going:
+                    t.calculate_features()
+                    t.score_behavior()
             except:
                 import pdb
                 import sys
