@@ -94,8 +94,8 @@ class Tracker:
         'stitching_method' : 'overlap', # originally it was centroid distance
         }
     
-    model_file = os.path.split(__file__)[0] + \
-        r'\mask_RCNN\Celegans_mask_RCNN\20220331_full_frame_Ce_on_udirt_2.pt'
+    # model_file = os.path.split(__file__)[0] + \
+    #     r'\mask_RCNN\Celegans_mask_RCNN\20220331_full_frame_Ce_on_udirt_2.pt'
     print('WARNING: Using C. elegans metaparameters')
     
     model_scale = (960, 1280) # rows, cols
@@ -150,7 +150,7 @@ class Tracker:
             'del_sz_thr' : '',
             'um_per_pix' : 4.3, # default based on data in C. elegans dataset
             'min_f' : 300,
-            'mRCNN_file' : os.path.split(__file__)[0] + \
+            'mask_RCNN_file' : os.path.split(__file__)[0] + \
                 r'\mask_RCNN\Celegans_mask_RCNN\20220331_full_frame_Ce_on_udirt_2.pt',
             'behavior_model_file' : os.path.split(__file__)[0] + \
                 r'\nictation_scoring\models\Celegans_model_and_scaler.pkl',
@@ -195,39 +195,23 @@ class Tracker:
     # wrapper called by tracking GUI
     def save_params(self):
         
-        
-        # if self.segmentation_method == 'mask_RCNN':
-        #     self.save_path = self.vid_path + '//' + self.vid_name[:-4] + \
-        #         '_mRCNN_tracking'
-        #     self.save_path_troubleshooting = self.save_path + \
-        #         '//mRCNN_troubleshooting'
-        # elif self.segmentation_method == 'intensity':
-        #     self.save_path = self.vid_path + '//' + self.vid_name[:-4] + \
-        #         '_intensity_tracking'
-        #     self.save_path_troubleshooting = self.save_path + \
-        #         '//intensity_troubleshooting'
-        
-        
-        # save_path = self.vid_path + '\\' \
-        #     + os.path.splitext(self.vid_name)[0] + '_tracking'
-        # dm.save_params_csv(self.parameters, save_path, 'tracking_parameters')
-        
-        dm.save_params_csv(self.parameters, self.save_path, 'tracking_parameters')
+        dm.save_params_csv(self.parameters, self.save_path,
+                           'tracking_parameters')
     
     
-    def set_parameters(self,human_checked,bkgnd_meth,bkgnd_nframes,k_sig,
-                       bw_thr,area_bnds,d_thr,del_sz_thr,um_per_pix,min_f):
+    # def set_parameters(self,human_checked,bkgnd_meth,bkgnd_nframes,k_sig,
+    #                    bw_thr,area_bnds,d_thr,del_sz_thr,um_per_pix,min_f):
         
-        self.parameters['human_checked'] = human_checked
-        self.parameters['bkgnd_meth'] = bkgnd_meth
-        self.parameters['bkgnd_nframes'] = bkgnd_nframes
-        self.parameters['k_sig'] = k_sig
-        self.parameters['bw_thr'] = bw_thr
-        self.parameters['area_bnds'] = area_bnds
-        self.parameters['d_thr'] = d_thr
-        self.parameters['del_sz_thr'] = bkgnd_meth
-        self.parameters['um_per_pix'] = um_per_pix
-        self.parameters['min_f'] = min_f
+    #     self.parameters['human_checked'] = human_checked
+    #     self.parameters['bkgnd_meth'] = bkgnd_meth
+    #     self.parameters['bkgnd_nframes'] = bkgnd_nframes
+    #     self.parameters['k_sig'] = k_sig
+    #     self.parameters['bw_thr'] = bw_thr
+    #     self.parameters['area_bnds'] = area_bnds
+    #     self.parameters['d_thr'] = d_thr
+    #     self.parameters['del_sz_thr'] = bkgnd_meth
+    #     self.parameters['um_per_pix'] = um_per_pix
+    #     self.parameters['min_f'] = min_f
         
     
     
@@ -249,9 +233,9 @@ class Tracker:
         
         
         # set up mask RCNN if needed
-        if self.segmentation_method == 'mask_RCNN' and \
-                                   'self.model_file' not in locals():
-            self.model, self.device = mrcnn.prepare_model(self.model_file)
+        if self.segmentation_method == 'mask_RCNN':
+            self.model, self.device = mrcnn.prepare_model(
+                self.parameters['mask_RCNN_file'])
             self.param_gui_f = -1 # tracks for which 'diff' was calculated
         
         
@@ -381,7 +365,8 @@ class Tracker:
         
         # set up model if using mask RCNN
         if self.segmentation_method == 'mask_RCNN':
-            self.model, self.device = mrcnn.prepare_model(self.model_file)
+            self.model, self.device = mrcnn.prepare_model(
+                self.parameters['mask_RCNN_file'])
         
         
         # set up loop, vars to hold centroid
@@ -1238,7 +1223,8 @@ class Tracker:
         v_out = cv2.VideoWriter(out_name,
             cv2.VideoWriter_fourcc('M','J','P','G'),
             self.vid.get(cv2.CAP_PROP_FPS), (out_w,out_h), 0)
-        self.model, self.device = mrcnn.prepare_model(self.model_file)
+        self.model, self.device = mrcnn.prepare_model(
+            self.parameters['mask_RCNN_file'])
         # get parameters (makes code below more readable)
         k_size = (round(self.parameters['k_sig']*3)*2+1,round(self.parameters['k_sig']*3)*2+1)
         k_sig = self.parameters['k_sig']

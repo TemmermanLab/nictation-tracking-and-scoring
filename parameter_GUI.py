@@ -16,6 +16,7 @@ Issues / improvements:
     -no way to change frame being inspected
     -cartoon showing worm size and distance threshold, and size threshold
      would help
+    -ensure a the new mask RCNN is used when the model file is changed
     
 
 @author: PDMcClanahan
@@ -68,10 +69,10 @@ def parameter_GUI(trackers):
         root.destroy()
         
         for t in trackers:
-            t.parameters['mRCNN_file'] = mrcnn_file
+            t.parameters['mask_RCNN_file'] = mrcnn_file
         
         enter_mrcnn_file.delete(0, 'end')
-        enter_mrcnn_file.insert(0,trackers[v].parameters['mRCNN_file'])
+        enter_mrcnn_file.insert(0,trackers[v].parameters['mask_RCNN_file'])
     
     
     def choose_behavior_model_button():
@@ -112,10 +113,13 @@ def parameter_GUI(trackers):
             trackers[v].parameters['d_thr'] = int(enter_d_thr.get())
             trackers[v].parameters['area_bnds'] = \
                 (int(enter_min_sz.get()),int(enter_max_sz.get()))
+            trackers[v].parameters['mask_RCNN_file'] = str(enter_mrcnn_file.get())
+            trackers[v].parameters['behavior_model_file'] = str(
+                enter_behavior_model_file.get())
+            
         except:
             print('Enter numbers in all the fields')
-            import pdb; pdb.set_trace()
-        #trackers[v].parameters['del_sz_thr'] = int(enter_del_sz_thr.get())
+
         if enter_um_per_pix.get() == '' or enter_um_per_pix.get() == 'None':
             trackers[v].parameters['um_per_pix'] = 'None'
         else:
@@ -337,7 +341,7 @@ def parameter_GUI(trackers):
         .grid(row = 7, column = 0,padx=1, pady=1, sticky = W+E+N+S)
     enter_mrcnn_file = Entry(param_insp, bg = "white")
     enter_mrcnn_file.grid(row = 7, column = 1,padx=1, pady=1, sticky = W+E)
-    enter_mrcnn_file.insert(0,trackers[v].parameters['mRCNN_file'])
+    enter_mrcnn_file.insert(0,trackers[v].parameters['mask_RCNN_file'])
     
     
     Button(param_insp,text="behavior model file (click to choose):", 
