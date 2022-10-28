@@ -98,13 +98,13 @@ def tracking_GUI():
         
 
     
-    # load a video or videos to be tracked
+    # load a video or videos to be analyzed
     def load_folder():
         nonlocal trackers, data_path
         
         root = tk.Tk()
         data_path = tk.filedialog.askdirectory(initialdir = '/', \
-            title = "Select the folder containing videos to be tracked \
+            title = "Select the folder containing videos to be analyzed \
             ...")
         root.destroy()
         
@@ -223,7 +223,7 @@ def tracking_GUI():
     
     
     # to do text
-    todo_txt = tk.Label(text = 'load a folder containing videos for tracking')
+    todo_txt = tk.Label(text = 'load a folder containing videos for analysis')
     todo_txt.grid(row = 0, column = 0, columnspan = 6, padx = 0, pady = 0)
 
 

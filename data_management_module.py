@@ -72,7 +72,7 @@ def load_parameter_csv(csv_filename):
                 except:
                     pass
                 
-            elif r[0] == 'bkgnd_meth' or r[0] == 'mRCNN_file' or r[0] == \
+            elif r[0] == 'bkgnd_meth' or r[0] == 'mask_RCNN_file' or r[0] == \
                 'behavior_model_file': # strings
                 pass
             

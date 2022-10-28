@@ -657,7 +657,7 @@ def calculate_metafeatures(df,fps):
     statistical features.'''
     
     df_meta = copy.deepcopy(df)
-    feats = copy.copy(df.columns[2:])
+    feats = copy.copy(df.columns[3:])
 
     
     # first derivative based on previous frame
@@ -672,6 +672,7 @@ def calculate_metafeatures(df,fps):
             else:
                 new_col.append((df[col][row]-df[col][row-1])/(1.0/fps))
         df_meta[col+'_primed1'] = new_col
+    df_meta = df_meta.copy() # prevents fragmentation
 
 
     # first derivative based on next frame
@@ -686,6 +687,7 @@ def calculate_metafeatures(df,fps):
             else:
                 new_col.append((df[col][row+1]-df[col][row])/(1.0/fps))
         df_meta[col+'_primed2'] = new_col
+    df_meta = df_meta.copy() # prevents fragmentation
 
 
     # min
@@ -702,6 +704,7 @@ def calculate_metafeatures(df,fps):
             else:
                 new_col.append(np.min(df[col][row-2:row+3]))
         df_meta[col+'_min'] = new_col
+    df_meta = df_meta.copy() # prevents fragmentation
     
     # max
     for col in feats:
@@ -713,6 +716,7 @@ def calculate_metafeatures(df,fps):
             else:
                 new_col.append(np.max(df[col][row-2:row+3]))
         df_meta[col+'_max'] = new_col
+    df_meta = df_meta.copy() # prevents fragmentation
     
     # var
     for col in feats:
@@ -724,6 +728,7 @@ def calculate_metafeatures(df,fps):
             else:
                 new_col.append(np.var(df[col][row-2:row+3]))
         df_meta[col+'_var'] = new_col
+    df_meta = df_meta.copy() # prevents fragmentation
     
     # mean
     for col in feats:
@@ -735,6 +740,8 @@ def calculate_metafeatures(df,fps):
             else:
                 new_col.append(np.mean(df[col][row-2:row+3]))
         df_meta[col+'_mean'] = new_col
+    df_meta = df_meta.copy() # prevents fragmentation
+    
     
     # median
     for col in feats:
@@ -921,7 +928,7 @@ def calculate_features(vid_file, tracking_method = 'mRCNN'):
 
     
     # names of features
-    cols = ['worm', 'frame', 'blur', 'bkgnd_sub_blur', 
+    cols = ['worm', 'frame', 'video frame', 'blur', 'bkgnd_sub_blur', 
             'bkgnd_sub_blur_ends','ends_mov_bias', 'body_length',  
             'total_curvature','lateral_movement', 'longitudinal_movement', 
             'out_of_track_centerline_mov', 'angular_sweep', 'cent_path_past',
@@ -949,10 +956,11 @@ def calculate_features(vid_file, tracking_method = 'mRCNN'):
             cent = cents[w][f]
             
                 
-            # features calcualted two at a time
+            # features calculated two at a time
             lat, lon = nf.lat_long_movement(cl0, cl, scl)
             rat, prod = nf.PCA_metrics(w, f, cents, path_f, scl, False)
             
+            # other information and features
             new_row = {'worm' : int(w), 'frame' : int(f), 
                         'ends_mov_bias' : nf.ends_mov_bias(cl0, cl, scl),
                         'out_of_track_centerline_mov' : 
@@ -978,7 +986,8 @@ def calculate_features(vid_file, tracking_method = 'mRCNN'):
                         'head_tail_path_bias' : nf.head_tail_path_bias(
                                                 clns, w, f, path_f, scl),
                         'centroid_path_PC_var_ratio' : rat, 
-                        'centroid_path_PC_var_product' : prod
+                        'centroid_path_PC_var_product' : prod,
+                        'video frame' : int(f + ffs[w])
                         }
             
             
@@ -989,8 +998,9 @@ def calculate_features(vid_file, tracking_method = 'mRCNN'):
     
     
     # tack on activity
-    df.insert(2,'activity',activity)
+    df.insert(3,'activity',activity)
     
+    # also include actual video frames
     
     # # reload load indicator values
     # df = pd.read_csv(os.path.splitext(vid_file)[0] + 
@@ -1022,9 +1032,9 @@ def score_behavior(feature_file, behavior_model_file, behavior_sig, fps,
     # load features
     df = pd.read_csv(feature_file)
     df_masked = nan_inf_mask_dataframe(df)
-    cols = df.columns[2:]
+    cols = df.columns[3:]
     df_scaled = scale_scoring_features(df_masked, scaler, cols)
-    df_ready = df_scaled[df_scaled.columns[2:]]
+    df_ready = df_scaled[df_scaled.columns[3:]]
         
     # smooth predictions
     probs = mod.predict_proba(df_ready)
@@ -1033,7 +1043,7 @@ def score_behavior(feature_file, behavior_model_file, behavior_sig, fps,
     predictions = probabilities_to_predictions(probs_smooth,
                                                        categories)
     # save predictions
-    df_preds_1 = copy.deepcopy(df_masked[['worm','frame']])
+    df_preds_1 = copy.deepcopy(df_masked[['worm','frame','video frame']])
     preds_dict = {} # empty dictionary
     preds_dict['pred. behavior']=list(predictions)
     for i in range(np.shape(probs)[1]):
