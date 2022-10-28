@@ -20,6 +20,10 @@ Created on Wed Oct 13 20:56:56 2021
      dimension, it should be frame, worm, [xs,ys])
     -check size change working
     -store tracking method and model, if applicable, in tracking params .csv
+    -scrub refs to worm, e.g. in df replace 'worm' with 'track'
+    -cut down in sig figs in feature spreadsheets
+    -in feature / score spreadsheets, refer to video frame instead of track
+    frame
 
 @author: PDMcClanahan
 """
@@ -28,6 +32,8 @@ import os
 import cv2
 import copy
 import csv
+import pickle
+import pandas as pd
 import tkinter as tk
 from tkinter import simpledialog
 
@@ -48,6 +54,9 @@ import deformable_model as def_worm
 import data_management_module as dm
 import centerline_module as cm
 
+# for feature calculation and scoring
+sys.path.append(os.path.split(__file__)[0]+'\\nictation_scoring')
+import nictation_module as nm
 
 
 class Tracker:
@@ -85,8 +94,8 @@ class Tracker:
         'stitching_method' : 'overlap', # originally it was centroid distance
         }
     
-    model_file = os.path.split(__file__)[0] + \
-        r'\mask_RCNN\Celegans_mask_RCNN\20220331_full_frame_Ce_on_udirt_2.pt'
+    # model_file = os.path.split(__file__)[0] + \
+    #     r'\mask_RCNN\Celegans_mask_RCNN\20220331_full_frame_Ce_on_udirt_2.pt'
     print('WARNING: Using C. elegans metaparameters')
     
     model_scale = (960, 1280) # rows, cols
@@ -140,7 +149,12 @@ class Tracker:
             'd_thr' : 430, # um, based on 100 um
             'del_sz_thr' : '',
             'um_per_pix' : 4.3, # default based on data in C. elegans dataset
-            'min_f' : 300
+            'min_f' : 300,
+            'mask_RCNN_file' : os.path.split(__file__)[0] + \
+                r'\mask_RCNN\Celegans_mask_RCNN\20220331_full_frame_Ce_on_udirt_2.pt',
+            'behavior_model_file' : os.path.split(__file__)[0] + \
+                r'\nictation_scoring\models\Celegans_model_and_scaler.pkl',
+            'behavior_sig' : 0.3 # s, for smoothing behav probs 
             }
             #self.save_params_csv('tracking_parameters')
         
@@ -181,39 +195,23 @@ class Tracker:
     # wrapper called by tracking GUI
     def save_params(self):
         
-        
-        # if self.segmentation_method == 'mask_RCNN':
-        #     self.save_path = self.vid_path + '//' + self.vid_name[:-4] + \
-        #         '_mRCNN_tracking'
-        #     self.save_path_troubleshooting = self.save_path + \
-        #         '//mRCNN_troubleshooting'
-        # elif self.segmentation_method == 'intensity':
-        #     self.save_path = self.vid_path + '//' + self.vid_name[:-4] + \
-        #         '_intensity_tracking'
-        #     self.save_path_troubleshooting = self.save_path + \
-        #         '//intensity_troubleshooting'
-        
-        
-        # save_path = self.vid_path + '\\' \
-        #     + os.path.splitext(self.vid_name)[0] + '_tracking'
-        # dm.save_params_csv(self.parameters, save_path, 'tracking_parameters')
-        
-        dm.save_params_csv(self.parameters, self.save_path, 'tracking_parameters')
+        dm.save_params_csv(self.parameters, self.save_path,
+                           'tracking_parameters')
     
     
-    def set_parameters(self,human_checked,bkgnd_meth,bkgnd_nframes,k_sig,
-                       bw_thr,area_bnds,d_thr,del_sz_thr,um_per_pix,min_f):
+    # def set_parameters(self,human_checked,bkgnd_meth,bkgnd_nframes,k_sig,
+    #                    bw_thr,area_bnds,d_thr,del_sz_thr,um_per_pix,min_f):
         
-        self.parameters['human_checked'] = human_checked
-        self.parameters['bkgnd_meth'] = bkgnd_meth
-        self.parameters['bkgnd_nframes'] = bkgnd_nframes
-        self.parameters['k_sig'] = k_sig
-        self.parameters['bw_thr'] = bw_thr
-        self.parameters['area_bnds'] = area_bnds
-        self.parameters['d_thr'] = d_thr
-        self.parameters['del_sz_thr'] = bkgnd_meth
-        self.parameters['um_per_pix'] = um_per_pix
-        self.parameters['min_f'] = min_f
+    #     self.parameters['human_checked'] = human_checked
+    #     self.parameters['bkgnd_meth'] = bkgnd_meth
+    #     self.parameters['bkgnd_nframes'] = bkgnd_nframes
+    #     self.parameters['k_sig'] = k_sig
+    #     self.parameters['bw_thr'] = bw_thr
+    #     self.parameters['area_bnds'] = area_bnds
+    #     self.parameters['d_thr'] = d_thr
+    #     self.parameters['del_sz_thr'] = bkgnd_meth
+    #     self.parameters['um_per_pix'] = um_per_pix
+    #     self.parameters['min_f'] = min_f
         
     
     
@@ -235,9 +233,9 @@ class Tracker:
         
         
         # set up mask RCNN if needed
-        if self.segmentation_method == 'mask_RCNN' and \
-                                   'self.model_file' not in locals():
-            self.model, self.device = mrcnn.prepare_model(self.model_file)
+        if self.segmentation_method == 'mask_RCNN':
+            self.model, self.device = mrcnn.prepare_model(
+                self.parameters['mask_RCNN_file'])
             self.param_gui_f = -1 # tracks for which 'diff' was calculated
         
         
@@ -367,7 +365,8 @@ class Tracker:
         
         # set up model if using mask RCNN
         if self.segmentation_method == 'mask_RCNN':
-            self.model, self.device = mrcnn.prepare_model(self.model_file)
+            self.model, self.device = mrcnn.prepare_model(
+                self.parameters['mask_RCNN_file'])
         
         
         # set up loop, vars to hold centroid
@@ -447,6 +446,35 @@ class Tracker:
         # make tracking video
         self.create_summary_video(out_scale)
         
+        
+
+    def calculate_features(self):
+        '''Wrapper for calculate features; calculates and saves features for
+        scoring behavior as csv files'''
+        nm.calculate_features(self.vid_path+'//'+self.vid_name)
+      
+        
+      
+    def score_behavior(self):
+        '''Loads behavior features, applies NaN and infinity masking, scales
+        them according to the scaling used in model training, and applies
+        smoothing.  Scores are saved in a .csv file'''
+        
+        
+        feature_file = self.save_path + '\\nictation_features.csv'
+        behavior_model_file = self.parameters['behavior_model_file']
+        behavior_sig = self.parameters['behavior_sig']
+        fps = self.vid.get(cv2.CAP_PROP_FPS)
+        save_path = self.save_path
+        
+        print('Scoring features in ' + feature_file + 'using the model in ' \
+              + behavior_model_file + '...')
+        
+        nm.score_behavior(feature_file, behavior_model_file, behavior_sig, 
+                          fps, save_path)
+        
+        print('Scores saved in ' + save_path + \
+              '\computer_behavior_scores.csv')
         
 
 
@@ -666,14 +694,16 @@ class Tracker:
                     self.first_frames_raw.append(int(f))
                     if self.metaparameters['centerline_method'] != 'none':
                         self.centerlines_raw.append([centerlines_frame[i]])
-                        self.centerline_flags_raw.append([centerline_flags_frame[i]])
+                        self.centerline_flags_raw.append(
+                            [centerline_flags_frame[i]])
                         self.angles_end_1_raw.append([angles_end_1_frame[i]])
                         self.angles_end_2_raw.append([angles_end_2_frame[i]])
 
           
     def remove_short_tracks(self):
         
-        print('Eliminating worms tracked for fewer than '+str(self.parameters['min_f'])+' frames...')
+        print('Eliminating worms tracked for fewer than ' + str(
+            self.parameters['min_f'])+' frames...')
         
         self.centroids = copy.deepcopy(self.centroids_raw)
         self.first_frames = copy.deepcopy(self.first_frames_raw)
@@ -729,12 +759,13 @@ class Tracker:
         
         # fix centerlines worm by worm
         for w in range(len(self.centerlines)):
-            #if w == 15: import pdb; pdb.set_trace()
-            flags = np.array(self.centerline_flags[w]) # new flags after fixing
+            # new flags after fixing
+            flags = np.array(self.centerline_flags[w]) 
             if len(np.where(flags==1)[0]) == len(flags):
                 print('Worm ' + str(w) + ' has no non-flagged centerlines')
             else:
-                flags_prog = copy.copy(flags) # copy for distance transform purposes
+                # copy for distance transform purposes
+                flags_prog = copy.copy(flags) 
                 dists_orig = cm.dist_trans(flags_prog) # for reference
                 # fix centerlines in order of closeness to a good centerline
                 while len(np.where(flags_prog==1)[0]) > 0:
@@ -748,7 +779,9 @@ class Tracker:
                     # a non-flagged centerline to break ties
                     dists_now = cm.dist_trans(flags_prog)
                     potential_next_fs = np.where(dists_now == 1)[0]
-                    f = potential_next_fs[np.where(dists_orig[potential_next_fs] == np.min(dists_orig[potential_next_fs]))[0][0]]
+                    f = potential_next_fs[np.where(dists_orig[
+                        potential_next_fs] == np.min(dists_orig[
+                            potential_next_fs]))[0][0]]
                     # f = np.where(dists_now == 1)[0][0]
                     
                     # choose a moving centerline from the adjacent centerlines 
@@ -1151,7 +1184,8 @@ class Tracker:
                     if centerline_flags_unfixed[w] == 0:
                         img_save = cv2.polylines(img_save, pts, True,
                                                  (255,0,0), 3)
-                        img_save = cv2.circle(img_save, pts[0][0], 5, 
+                        # wants pts[0][0] to be tuple as of 20221027
+                        img_save = cv2.circle(img_save, tuple(pts[0][0]), 5,
                                               (255,0,0), -1)
                     elif centerline_flags_unfixed[w] == 1:
                         img_save = cv2.polylines(img_save, pts_unfixed, True, 
@@ -1161,13 +1195,13 @@ class Tracker:
                         if centerline_flags[w] == 2:
                             img_save = cv2.polylines(img_save, pts, True,
                                                      (0,255,0), 3)
-                            img_save = cv2.circle(img_save, pts[0][0], 5,
-                                                  (0,255,0), -1)
+                            img_save = cv2.circle(img_save, tuple(pts[0][0]),
+                                                  5, (0,255,0), -1)
                         elif centerline_flags[w] == 3:
                             img_save = cv2.polylines(img_save, pts, True,
                                                      (0,255,255), 3)
-                            img_save = cv2.circle(img_save, pts[0][0], 5,
-                                                  (0,255,255), -1)
+                            img_save = cv2.circle(img_save, tuple(pts[0][0]),
+                                                  5, (0,255,255), -1)
                             
             img_save = cv2.resize(img_save, (out_w,out_h),
                                   interpolation = cv2.INTER_AREA)
@@ -1189,7 +1223,8 @@ class Tracker:
         v_out = cv2.VideoWriter(out_name,
             cv2.VideoWriter_fourcc('M','J','P','G'),
             self.vid.get(cv2.CAP_PROP_FPS), (out_w,out_h), 0)
-        self.model, self.device = mrcnn.prepare_model(self.model_file)
+        self.model, self.device = mrcnn.prepare_model(
+            self.parameters['mask_RCNN_file'])
         # get parameters (makes code below more readable)
         k_size = (round(self.parameters['k_sig']*3)*2+1,round(self.parameters['k_sig']*3)*2+1)
         k_sig = self.parameters['k_sig']
