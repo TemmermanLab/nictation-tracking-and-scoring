@@ -372,7 +372,7 @@ def flag_bad_centerline(cline, max_length, max_angle):
 
 def rectify_centerlines(centerlines, angles_end_1, angles_end_2):    
     '''This function attempts to point all the centerline in the same
-    direction by matching the ends from frame to fram by distance'''
+    direction by matching the ends from frame to frame by distance'''
     
     def dist(p1,p2):
         d = np.sqrt((p2[0]-p1[0])**2+(p2[1]-p1[1])**2)

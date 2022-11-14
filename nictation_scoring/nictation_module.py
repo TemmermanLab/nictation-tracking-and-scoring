@@ -135,7 +135,7 @@ def evaluate_models_accuracy(vid_file, **kwargs):
 
 
 def combine_and_prepare_man_scores_and_features(vid_file, score_file = None, 
-                                                simplify = True):
+                                        simplify = True, alt_feat = False):
     '''Loads manual scores and features from the same video and combines and
     nan-masks them in preparation for training a classifier'''
     
@@ -148,8 +148,12 @@ def combine_and_prepare_man_scores_and_features(vid_file, score_file = None,
         man_scores_lst = load_manual_scores_csv(score_file, simplify)
     
     # load features
-    df = pd.read_csv(os.path.splitext(vid_file)[0] + 
-                      r'_tracking\nictation_features.csv')
+    if not alt_feat:
+        df = pd.read_csv(os.path.splitext(vid_file)[0] + 
+                          r'_tracking\nictation_features.csv')
+    else:
+        df = pd.read_csv(os.path.splitext(vid_file)[0] + 
+                          '_tracking\\' + alt_feat)
     
     # add manual scores to df
     man_scores = []
@@ -436,9 +440,9 @@ def split(df_masked, prop_train = 0.75, rand_split = False):
     and wi (worm number and frame) at <prop_train>.  The index at which the
     data are split is shifted by a random amount if <rand_split>.'''
     
-    X = df_masked[df_masked.columns[3:]]
+    X = df_masked[df_masked.columns[4:]]
     y = df_masked['manual_behavior_label']
-    wi = df_masked[df_masked.columns[0:2]]
+    wi = df_masked[df_masked.columns[0:3]]
     
     if rand_split:
         # start the split at s and wrap instead of starting at zero
@@ -858,7 +862,7 @@ def scramble_df_col(df, cols_to_scramble, rand_rand = False):
 
 # USED
 def learn_and_predict(X_train, X_test, y_train, y_test,
-                      model_type = 'k nearest neighbors', print_acc = True):
+                      model_type = 'random forest', print_acc = True):
     
     if model_type == 'logistic regression':
         model = LogisticRegression(max_iter = 1000)
@@ -886,15 +890,20 @@ def learn_and_predict(X_train, X_test, y_train, y_test,
         print('Accuracy of ',model_type,' classifier on training set: {:.2f}'
              .format(model.score(X_train, y_train)))
         
-        print('Accuracy of ',model_type,' classifier on test set: {:.2f}'
-             .format(model.score(X_test, y_test)))
+        if len(X_test) > 0:
+            print('Accuracy of ',model_type,' classifier on test set: {:.2f}'
+                 .format(model.score(X_test, y_test)))
     
     train_acc = model.score(X_train, y_train)
-    test_acc = model.score(X_test, y_test)
-    predictions = model.predict(X_test)
-    probabilities = model.predict_proba(X_test)
+    if len(X_test) > 0:
+        test_acc = model.score(X_test, y_test)
+        predictions = model.predict(X_test)
+        probabilities = model.predict_proba(X_test)
     
-    return model, train_acc, test_acc, probabilities, predictions
+    if len(X_test) > 0:
+        return model, train_acc, test_acc, probabilities, predictions
+    else:
+        return model, train_acc
 
 
 
@@ -928,7 +937,7 @@ def calculate_features(vid_file, tracking_method = 'mRCNN'):
 
     
     # names of features
-    cols = ['worm', 'frame', 'video frame', 'blur', 'bkgnd_sub_blur', 
+    cols = ['worm', 'frame', 'video_frame', 'blur', 'bkgnd_sub_blur', 
             'bkgnd_sub_blur_ends','ends_mov_bias', 'body_length',  
             'total_curvature','lateral_movement', 'longitudinal_movement', 
             'out_of_track_centerline_mov', 'angular_sweep', 'cent_path_past',
@@ -987,7 +996,7 @@ def calculate_features(vid_file, tracking_method = 'mRCNN'):
                                                 clns, w, f, path_f, scl),
                         'centroid_path_PC_var_ratio' : rat, 
                         'centroid_path_PC_var_product' : prod,
-                        'video frame' : int(f + ffs[w])
+                        'video_frame' : int(f + ffs[w])
                         }
             
             
@@ -1018,7 +1027,7 @@ def calculate_features(vid_file, tracking_method = 'mRCNN'):
     
 
 def score_behavior(feature_file, behavior_model_file, behavior_sig, fps,
-                   save_path):
+                   save_path, output = False):
     '''Applies the model and scaler in <behavior_model_file> to the features
     in <feature_file> (the model needs to have been trained on the same types
     of features), smooths the probabilities by <behavior_sig> * <fps>, and
@@ -1032,9 +1041,10 @@ def score_behavior(feature_file, behavior_model_file, behavior_sig, fps,
     # load features
     df = pd.read_csv(feature_file)
     df_masked = nan_inf_mask_dataframe(df)
-    cols = df.columns[3:]
+    dfi =  df.columns.get_loc('activity')
+    cols = df.columns[dfi:]
     df_scaled = scale_scoring_features(df_masked, scaler, cols)
-    df_ready = df_scaled[df_scaled.columns[3:]]
+    df_ready = df_scaled[df_scaled.columns[dfi:]]
         
     # smooth predictions
     probs = mod.predict_proba(df_ready)
@@ -1043,15 +1053,20 @@ def score_behavior(feature_file, behavior_model_file, behavior_sig, fps,
     predictions = probabilities_to_predictions(probs_smooth,
                                                        categories)
     # save predictions
-    df_preds_1 = copy.deepcopy(df_masked[['worm','frame','video frame']])
+    df_preds_1 = copy.deepcopy(df_masked[['worm','frame','video_frame']])
     preds_dict = {} # empty dictionary
     preds_dict['pred. behavior']=list(predictions)
     for i in range(np.shape(probs)[1]):
         preds_dict['prob. '+str(categories[i])] = list(probs[:,i])
     df_preds_2 = pd.DataFrame(preds_dict)
     df_preds = pd.concat([df_preds_1, df_preds_2], axis=1)
-    df_preds.to_csv(save_path + r'\computer_behavior_scores.csv',
-                    index = False)
+    
+    if output:
+        return df_preds
+    else:
+        df_preds.to_csv(save_path + r'\computer_behavior_scores.csv',
+                        index = False)
+    
 
 
 

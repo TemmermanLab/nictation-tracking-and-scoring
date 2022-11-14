@@ -983,7 +983,7 @@ class Tracker:
         plt.xlabel('Count (' + str(fixes_per_frame) + ' fixes per frame)')
         plt.ylabel('Time (s)')
         plt.savefig(self.save_path_troubleshooting+'//'+
-                    'centerlin_fixing_timing.png')
+                    'centerline_fixing_timing.png')
         plt.show()
 
 

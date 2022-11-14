@@ -267,8 +267,9 @@ def load_centerlines_csv(save_path, N = 50):
                         for f in range(len(r)-1):
                             centerlines_worm[f,0,p,1] = float(r[f+1])
                         p+=1        
-        w += 1
-        centerlines.append(list(centerlines_worm))
-        centerline_flags.append(centerline_flags_worm)
+            w += 1
+            #import pdb; pdb.set_trace()
+            centerlines.append(list(centerlines_worm))
+            centerline_flags.append(centerline_flags_worm)
         
     return centerlines, centerline_flags
