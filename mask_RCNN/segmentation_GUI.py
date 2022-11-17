@@ -45,7 +45,8 @@ def segmentation_GUI():
     def draw_ROI(img,mask):
         #import pdb; pdb.set_trace()
         fw = 15 # frame width, makes it easier to segment object touching the edge
-        img_framed = np.zeros((np.shape(img)[0]+2*fw,np.shape(img)[1]+2*fw),dtype = 'uint8')
+        img_framed = np.zeros((np.shape(img)[0]+2*fw,np.shape(img)[1]+2*fw),
+                              dtype = 'uint8')
         img_framed[fw:-fw,fw:-fw] = img
         imgc = cv2.cvtColor(img_framed,cv2.COLOR_GRAY2RGB)
         img_reset = copy.copy(imgc)
@@ -59,8 +60,8 @@ def segmentation_GUI():
             if event == cv2.EVENT_MBUTTONDBLCLK:
                 print(len(clicks_x))
                 if len(clicks_x) > 2:
-                    # cv2.line(imgc, (clicks_x[-1],clicks_y[-1]), (clicks_x[0],clicks_y[0]), (0,0,255),1)
-                    contours = np.flipud(np.rot90(np.vstack((clicks_x,clicks_y))))
+                    contours = np.flipud(np.rot90(np.vstack((
+                        clicks_x,clicks_y))))
                     cv2.fillPoly(imgc, pts =[contours], color=(0,0,255))
                     z.append(1)
                 else:
@@ -69,22 +70,27 @@ def segmentation_GUI():
             
             elif event == cv2.EVENT_MBUTTONDOWN:
                 if len(clicks_x) > 2:
-                    cv2.line(imgc, (clicks_x[-1],clicks_y[-1]), (clicks_x[0],clicks_y[0]), (0,0,255),1)
-                    contours = np.flipud(np.rot90(np.vstack((clicks_x,clicks_y))))
+                    cv2.line(imgc, (clicks_x[-1],clicks_y[-1]), 
+                             (clicks_x[0],clicks_y[0]), (0,0,255),1)
+                    contours = np.flipud(
+                        np.rot90(np.vstack((clicks_x,clicks_y))))
                     cv2.fillPoly(imgc, pts =[contours], color=(0,0,255))
                     clicks_x.clear(); clicks_y.clear()
                     img_reset = copy.copy(imgc)
                              
-            elif event == cv2.EVENT_LBUTTONDOWN and event != cv2.EVENT_LBUTTONDBLCLK:
+            elif event == cv2.EVENT_LBUTTONDOWN and \
+                event != cv2.EVENT_LBUTTONDBLCLK:
                 clicks_x.append(x)
                 clicks_y.append(y)
                 print(len(clicks_x))
                 if len(clicks_x) ==1:
                     cv2.circle(imgc,(x,y),0,(0,0,255),-1)
                 if len(clicks_x) > 1:
-                    cv2.line(imgc, (clicks_x[-2],clicks_y[-2]), (clicks_x[-1],clicks_y[-1]), (0,0,255), 1)
+                    cv2.line(imgc, (clicks_x[-2],clicks_y[-2]), 
+                             (clicks_x[-1],clicks_y[-1]), (0,0,255), 1)
              
-            elif event == cv2.EVENT_RBUTTONDOWN or event == cv2.EVENT_RBUTTONDBLCLK:
+            elif event == cv2.EVENT_RBUTTONDOWN or \
+                event == cv2.EVENT_RBUTTONDBLCLK:
                 if len(clicks_x) >0:
                     clicks_x.pop()
                     clicks_y.pop()
@@ -96,7 +102,8 @@ def segmentation_GUI():
                     cv2.circle(imgc,(clicks_x[0],clicks_y[0]),0,(0,0,255),-1)
                 if len(clicks_x) > 1:
                     for p in range(len(clicks_x)-1):
-                        cv2.line(imgc, (clicks_x[-2-p],clicks_y[-2-p]), (clicks_x[-1-p],clicks_y[-1-p]), (0,0,255), 1)
+                        cv2.line(imgc, (clicks_x[-2-p],clicks_y[-2-p]), \
+                                (clicks_x[-1-p],clicks_y[-1-p]), (0,0,255), 1)
                  
         cv2.namedWindow('Image to segment',cv2.WINDOW_NORMAL)
         cv2.imshow('Image to segment',imgc)
@@ -107,7 +114,8 @@ def segmentation_GUI():
             k = cv2.waitKey(20) & 0xFF
             if len(z)>0:
                 print('done')
-                cv2.imshow('Image to segment',imgc) # repeating these lines ensure display of pt 2
+                # repeating these lines ensure display of pt 2
+                cv2.imshow('Image to segment',imgc)
                 k = cv2.waitKey(20) & 0xFF
                 cv2.destroyAllWindows()
                 print('Points chosen, filling ROI...')
@@ -125,7 +133,8 @@ def segmentation_GUI():
         global img
         img = cv2.imread(img_path+'/'+img_list[i],cv2.IMREAD_GRAYSCALE)
         if os.path.isfile(mask_path+'/'+img_list[i][0:-4]+'_mask.png'):
-            mask = cv2.imread(mask_path+'/'+img_list[i][0:-4]+'_mask.png',cv2.IMREAD_GRAYSCALE)
+            mask = cv2.imread(mask_path+'/'+img_list[i][0:-4]+'_mask.png',
+                              cv2.IMREAD_GRAYSCALE)
         else:
             mask = np.zeros(np.shape(img),dtype = 'uint8')
         #if i > 0: import pdb; pdb.set_trace()
@@ -137,14 +146,17 @@ def segmentation_GUI():
         print('update image function called')
         nonlocal img_win, win_sz, i, i_tot, w, mask
         global disp
-        inf_txt['text']='image '+str(i+1) + ' of ' + str(i_tot) + ', '+str(w)+' ROIs'
+        inf_txt['text']='image '+str(i+1) + ' of ' + str(i_tot) + ', ' + \
+            str(w) +' ROIs'
         disp = cv2.cvtColor(img,cv2.COLOR_GRAY2RGB)
         
         for rr in range(w+1):
             if rr < len(mask_colors):
-                disp[np.where(mask==rr+1)[0],np.where(mask==rr+1)[1]]= mask_colors[int(rr)]
+                disp[np.where(mask==rr+1)[0], \
+                     np.where(mask==rr+1)[1]] = mask_colors[int(rr)]
             else:
-                disp[np.where(mask==rr+1)[0],np.where(mask==rr+1)[1]]= mask_colors[-1]
+                disp[np.where(mask==rr+1)[0], \
+                     np.where(mask==rr+1)[1]]= mask_colors[-1]
         
         disp = Image.fromarray(disp)
         disp = disp.resize(win_sz,Image.NEAREST) 
@@ -165,9 +177,11 @@ def segmentation_GUI():
         lines = []
         lines.append('# image name (\\t) object index\n')
         for img in range(i_tot):
-            if os.path.isfile(mask_path+'/'+img_list[i][0:-4]+'_mask.png'):
-                msk = cv2.imread(mask_path+'/'+img_list[img][0:-4]+'_mask.png',cv2.IMREAD_GRAYSCALE)
-                lines.append(img_list[img]+'\t'+str(np.max(msk))+'\n')
+            if os.path.isfile(mask_path + '/' + img_list[i][0:-4] + \
+                              '_mask.png'):
+                msk = cv2.imread(mask_path + '/' +img_list[img][0:-4] + \
+                                 '_mask.png', cv2.IMREAD_GRAYSCALE)
+                lines.append(img_list[img] + '\t' + str(np.max(msk)) + '\n')
         
         if os.path.isfile(txt_file): os.remove(txt_file)
         
@@ -291,7 +305,8 @@ def segmentation_GUI():
     def back_button():
         nonlocal i
         global img
-        print('back button pressed, ROIs on current image and previous will be lost')
+        print('back button pressed, ROIs on current image and previous ', + \
+              'will be lost')
         if i > 0:
             cv2.imwrite(mask_path+'/'+img_list[i][0:-4]+'_mask.png',mask)
         
@@ -352,13 +367,48 @@ def segmentation_GUI():
     
 
     # buttons
-    tk.Button(segmentation_GUI, text = "SEGMENT ROI", command = segment_ROI_button, width = 11) .grid(row = 2, column = 0, columnspan = 2, padx=1, pady=1, sticky = 'W'+'E'+'N'+'S')
-    tk.Button(segmentation_GUI, text = "UNDO", command = undo_button, width = 11) .grid(row = 2, column = 2, columnspan = 1, padx=1, pady=1, sticky = 'W'+'E'+'N'+'S')
-    tk.Button(segmentation_GUI, text = "UNDO BY NUMBER", command = undo_by_number_button, width = 11) .grid(row = 2, column = 3, columnspan = 1, padx=1, pady=1, sticky = 'W'+'E'+'N'+'S')
-    tk.Button(segmentation_GUI, text = "LOAD IMAGES", command = load_images_button, width = 11) .grid(row = 3, column = 0, padx=1, pady=1, sticky = 'W'+'E'+'N'+'S')
-    tk.Button(segmentation_GUI, text = "NEXT IMAGE", command = next_image_button, width = 11) .grid(row = 3, column = 1, padx=1, pady=1, sticky = 'W'+'E'+'N'+'S')
-    tk.Button(segmentation_GUI, text = "BACK", command = back_button,width = 11) .grid(row = 3, column = 2, padx=1, pady=1, sticky = 'W'+'E'+'N'+'S')
-    tk.Button(segmentation_GUI, text = "EXIT", command = exit_button,width = 11) .grid(row = 3, column = 3, padx=1, pady=1, sticky = 'W'+'E'+'N'+'S')
+    tk.Button(segmentation_GUI, 
+              text = "SEGMENT ROI",
+              command = segment_ROI_button,
+              width = 11) \
+              .grid(row = 2, column = 0, columnspan = 2, padx=1, pady=1,
+                    sticky = 'W'+'E'+'N'+'S')
+    tk.Button(segmentation_GUI,
+              text = "UNDO",
+              command = undo_button,
+              width = 11) \
+              .grid(row = 2, column = 2, columnspan = 1, padx=1, pady=1,
+                    sticky = 'W'+'E'+'N'+'S')
+    tk.Button(segmentation_GUI,
+              text = "UNDO BY NUMBER",
+              command = undo_by_number_button,
+              width = 11) 
+              .grid(row = 2, column = 3, columnspan = 1, padx=1, pady=1,
+                    sticky = 'W'+'E'+'N'+'S')
+    tk.Button(segmentation_GUI,
+              text = "LOAD IMAGES",
+              command = load_images_button,
+              width = 11) 
+              .grid(row = 3, column = 0, padx=1, pady=1,
+                    sticky = 'W'+'E'+'N'+'S')
+    tk.Button(segmentation_GUI,
+              text = "NEXT IMAGE",
+              command = next_image_button,
+              width = 11) 
+              .grid(row = 3, column = 1, padx=1, pady=1,
+                    sticky = 'W'+'E'+'N'+'S')
+    tk.Button(segmentation_GUI,
+              text = "BACK",
+              command = back_button,
+              width = 11) 
+              .grid(row = 3, column = 2, padx=1, pady=1,
+                    sticky = 'W'+'E'+'N'+'S')
+    tk.Button(segmentation_GUI,
+              text = "EXIT",
+              command = exit_button,
+              width = 11) 
+               .grid(row = 3, column = 3, padx=1, pady=1,
+                     sticky = 'W'+'E'+'N'+'S')
     
     
     # # settings for text over images

@@ -113,7 +113,8 @@ def parameter_GUI(trackers):
             trackers[v].parameters['d_thr'] = int(enter_d_thr.get())
             trackers[v].parameters['area_bnds'] = \
                 (int(enter_min_sz.get()),int(enter_max_sz.get()))
-            trackers[v].parameters['mask_RCNN_file'] = str(enter_mrcnn_file.get())
+            trackers[v].parameters['mask_RCNN_file'] = str(
+                enter_mrcnn_file.get())
             trackers[v].parameters['behavior_model_file'] = str(
                 enter_behavior_model_file.get())
             

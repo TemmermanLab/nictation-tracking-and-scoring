@@ -404,8 +404,10 @@ class Tracker:
             
             centroids_frame, centerlines_frame, centerline_flags_frame, \
                     angles_end_1_frame, angles_end_2_frame = \
-                        self.find_worms(img, self.segmentation_method, self.metaparameters, self.parameters, 
-                                    self.background, self.model, self.device, self.scale_factor)
+                        self.find_worms(img, self.segmentation_method,
+                            self.metaparameters, self.parameters, 
+                            self.background, self.model, self.device, 
+                            self.scale_factor)
             
             self.stitch_centroids(centroids_frame, centerlines_frame,
                                   centerline_flags_frame, angles_end_1_frame,
@@ -511,7 +513,6 @@ class Tracker:
         # debug, max_centerline_angle, max_centerline_length, k_sig, bw_thr, area_bnds, segmentation_method, model, device, scale_factor, background, edge_proximity_cutoff, centerline_method
         debug = False # for find_centerline, do not comment out or will crash
         
-        
         # convert parameters to pixels for practical use
         k_sig = parameters['k_sig'] * (1/parameters['um_per_pix'])
         k_size = (round(k_sig*3)*2+1,
@@ -571,7 +572,7 @@ class Tracker:
                         
                         try:
                             centerline, angle_end_1, angle_end_2 = \
-                                cm.find_centerline(bw_w,metaparameters['centerline_method'], debug)
+                                cm.find_centerline(bw_w, debug)
                             centerline = np.float32(centerline)
                             centerline_flag = cm.flag_bad_centerline(centerline,
                                                             max_length, max_angle)

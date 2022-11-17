@@ -107,7 +107,7 @@ class Gravitational_model():
         self.draw_moving_img()
         self.update_width()
         self.draw_moving_img()
-        
+             
         
     def draw_moving_img(self):
         '''Draws an image based on the locations of the N main points, width,
@@ -421,6 +421,7 @@ class Gravitational_model():
     
         x = rcx + np.cos(angle) * (px - rcx) - np.sin(angle) * (py - rcy)
         y = rcy + np.sin(angle) * (px - rcx) + np.cos(angle) * (py - rcy)
+        
         return x, y
     
     
@@ -489,13 +490,13 @@ if __name__ == '__main__':
         
         show = True
         write_video = True
-        save_dir = r'C:\Users\Temmerman Lab\Dropbox\Temmerman_Lab\code\nict'+\
-            r'ation\test_output'
+        save_dir = r'C:\Users\Temmerman Lab\Dropbox\Temmerman_Lab\code\nic'+\
+            r'tation\test_output'
         
         
         # # LOAD LOOPED WORM
-        # init_cond_file = r'C:\Users\Temmerman Lab\Dropbox\Temmerman_Lab\cod'+\
-        #     r'e\nictation\test_files\20220215_ext_debugging_start.p'
+        # init_cond_file = r'C:\Users\Temmerman Lab\Dropbox\Temmerman_Lab\c'+\
+        #     r'ode\nictation\test_files\20220215_ext_debugging_start.p'
         # with open(init_cond_file, 'rb') as f:
         #     mov_cline, target_img = pickle.load(f)
         
@@ -521,8 +522,10 @@ if __name__ == '__main__':
         # width = int(target_img.shape[1] * scale_prop)
         # height = int(target_img.shape[0] * scale_prop)
         # dim = (width, height)
-        # target_img_scaled = cv2.resize(target_img, dim, interpolation = cv2.INTER_AREA)
-        # thr, target_img_scaled = cv2.threshold(target_img_scaled,127,255,cv2.THRESH_BINARY)
+        # target_img_scaled = cv2.resize(
+        #    target_img, dim, interpolation = cv2.INTER_AREA)
+        # thr, target_img_scaled = cv2.threshold(target_img_scaled,127,255,
+        #    cv2.THRESH_BINARY)
         
         # mov_cline_scaled = mov_cline * scale_prop
         

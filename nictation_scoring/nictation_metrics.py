@@ -79,6 +79,7 @@ def nictation_ratio(scores, only_active = True, binary = True):
     return nict_ratio # unitless
 
 
+
 def initiation_rate(scores, only_active = True, fps = 5, binary = True):
     '''takes a list of nictation behavior scores and finds the number of 
     transitions from not nictating to nictating divided by the total time not
@@ -96,7 +97,8 @@ def initiation_rate(scores, only_active = True, fps = 5, binary = True):
             denom = np.sum(trans_mat[2,:])
             
         else:
-            num = trans_mat[2,3] + trans_mat[2,4] + trans_mat[1,3] + trans_mat[1,4]
+            num = trans_mat[2,3] + trans_mat[2,4] + trans_mat[1,3] + \
+                trans_mat[1,4]
             denom = np.sum(trans_mat[1:3,:])
     else:
         
@@ -133,7 +135,8 @@ def stopping_rate(scores, only_active = True, fps = 5, binary = True):
             denom = np.sum(trans_mat[3,:])
             
         else:
-            num = trans_mat[3,2] + trans_mat[4,2] + trans_mat[3,1] + trans_mat[4,1]
+            num = trans_mat[3,2] + trans_mat[4,2] + trans_mat[3,1] + \
+                trans_mat[4,1]
             denom = np.sum(trans_mat[3:5,:])
     else:
         trans_mat = np.zeros((3,3))
@@ -151,6 +154,7 @@ def stopping_rate(scores, only_active = True, fps = 5, binary = True):
     return SR
 
 
+
 def nictation_duration(scores, exclude_partial_episodes = False, 
                        only_active = True, fps = 5):
     '''Nictation duration is the average duration of nictation bouts.  This
@@ -161,7 +165,6 @@ def nictation_duration(scores, exclude_partial_episodes = False,
     nictation bouts in which there is not standing are counted.  This meansure
     is problematic because, among other reasons, many bouts outlast the period
     of tracking, and this is more likely to happen with longer bouts.'''
-    
     
     if exclude_partial_episodes and not only_active:
         episode_durs = []
@@ -260,7 +263,3 @@ def nictation_duration(scores, exclude_partial_episodes = False,
         return nict_dur, np.nan
             
         
-    
-    
-
-

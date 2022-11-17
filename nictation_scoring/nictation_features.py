@@ -4,10 +4,11 @@ Created on Thu Apr 21 10:50:32 2022
 
 
 This module contains functions that calculate features used to detect nictation
-based on tracking and video data. Most features require tracking information
-from one or two frames, or in one case the raw video, to calculate. A few
-require <num_f> frames in the past or future, and return NaN otherwise. These
-are currently ambiguous to the head / tail orientation of the worm.
+based on tracking and video data. Most features are calculated from the 
+tracking information of one or two worm-frames, or occasionally the raw video.
+A few require <num_f> frames in the past or future, and return NaN otherwise.
+These features are currently ambivalent about the head / tail orientation of
+the worm.
 
 
 This is based on the earlier indicator_functions.py
@@ -247,8 +248,7 @@ def lat_long_movement(centerline0, centerline1, um_per_pix):
     lateral (normal) direction, defined as a right angle from the line 
     connecting the point behind and in front of the point in question'''
     
-    if centerline0 is not None:
-    
+    if centerline0 is not None:   
         lat_dist = []
         long_dist = []
         
@@ -256,8 +256,8 @@ def lat_long_movement(centerline0, centerline1, um_per_pix):
         for p in range(len(centerline1)-1,0,-1):
                
             # extract needed points, p-1 is closer to the *head*, since we are
-            # thinking about this from tail to head, point 0 is one segment closer
-            # to the tail
+            # thinking about this from tail to head, point 0 is one segment 
+            # closer to the tail
             p0_0 = centerline0[p] # frame 0, point 0
             p0_1 = centerline0[p-1] # frame 0, point 1 
             p1_0 = centerline1[p] # frame 1, point 0 (not actually used)
@@ -267,9 +267,8 @@ def lat_long_movement(centerline0, centerline1, um_per_pix):
             cl_vect_raw = np.array([p0_1[0]-p0_0[0],p0_1[1]-p0_0[1]])
             cl_vect_unit = cl_vect_raw / np.linalg.norm(cl_vect_raw)
             
-            # find the vector connecting the point in centerline0 (frame 0) to the
-            # same point in centerline1 (frame 1)
-            # mvmnt_vect = np.array([p1_1[0]-p0_1[0],p1_1[1]-p0_1[1]])
+            # find the vector connecting the point in centerline0 (frame 0) to 
+            # the same point in centerline1 (frame 1)
             mvmnt_vect = p1_1-p0_1
             
             # absolute vals taken below because we do not care about fwd vs
@@ -295,10 +294,9 @@ def centroid_path_length_past(w, f, centroids, um_per_pix, num_f):
     '''centroid path length in the past - Distance travelled by the centroids
     num_f frames in the past to the current frame'''
     
-    
     cp = 0
     if f - num_f >= 0:
-        #import pdb; pdb.set_trace()
+        
         for ff in range(f-num_f,f,1):
             cp = cp + \
                 np.linalg.norm(centroids[ff]-centroids[ff+1]) * um_per_pix
@@ -314,6 +312,7 @@ def centroid_path_length_fut(w, f, centroids, um_per_pix, num_f):
 
     cp = 0
     if f + num_f < len(centroids):
+        
         for ff in range(f,f+num_f,1):
             cp = cp + \
                 np.linalg.norm(centroids[ff]-centroids[ff+1]) * um_per_pix

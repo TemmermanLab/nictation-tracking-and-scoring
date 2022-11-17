@@ -68,10 +68,10 @@ def evaluate_models_accuracy(vid_file, **kwargs):
     
     trials = kwargs.get('trials',1)
     
-    model_types = kwargs.get('model_types',['logistic regression','decision tree',
-                   'k nearest neighbors', 'linear discriminant analysis',
-                   'Gaussian naive Bayes', 'support vector machine', 
-                   'random forest', 'neural network'])
+    model_types = kwargs.get('model_types',['logistic regression',
+        'decision tree', 'k nearest neighbors',
+        'linear discriminant analysis', 'Gaussian naive Bayes', 
+        'support vector machine', 'random forest', 'neural network'])
     
     scaling_methods = kwargs.get('scaling_methods',['none','min max',
                         'variance','Gaussian','whiten'])
@@ -466,7 +466,8 @@ def split(df_masked, prop_train = 0.75, rand_split = False):
         X_test_spl = X[spl_ind_1%len(y):spl_ind_2%len(y)]
         y_train_spl = pd.concat([y[:spl_ind_1%len(y)] , y[spl_ind_2%len(y):]])
         y_test_spl = y[spl_ind_1%len(y):spl_ind_2%len(y)]
-        wi_train_spl =  pd.concat([wi[:spl_ind_1%len(y)] , wi[spl_ind_2%len(y):]])
+        wi_train_spl =  pd.concat([wi[:spl_ind_1%len(y)] , 
+                                   wi[spl_ind_2%len(y):]])
         wi_test_spl = wi[spl_ind_1%len(y):spl_ind_2%len(y)]
     
     return X_train_spl, X_test_spl, y_train_spl, y_test_spl, wi_train_spl, \
@@ -581,7 +582,8 @@ def worm_to_df(w,metric_labels,behavior_scores,activity,metric_scores):
         if behavior_scores[i] == 3: behavior[i] = 'standing'
         if behavior_scores[i] == -1: behavior[i] = 'censored'
 
-    data = {'behavior label': behavior_scores,'behavior':behavior, 'activity': activity,
+    data = {'behavior label': behavior_scores,'behavior':behavior,
+            'activity': activity,
         metric_labels[1]:metric_scores[1][w][1:],
         metric_labels[2]:metric_scores[2][w][1:],
         metric_labels[3]:metric_scores[3][w][1:],
@@ -628,26 +630,6 @@ def probabilities_to_predictions(probs, categories):
 
     return preds#np.int8(preds)
 
-    
-
-# def first_derivative_df(df,fps):
-#     '''Calculates the first derivative of each feature based on the value in
-#     the previous worm-frame and time elapsed (1/fps).  Inserts NaN if there is
-#     no previous frame available'''
-    
-#     df_primed = copy.deepcopy(df)
-    
-#     for col in df.columns[2:]:
-#         new_col = []
-#         for row in range(np.shape(df)[0]):
-#             if df['frame'][row] == 0 or row == 0 or np.isnan(df[col][row]) \
-#                 or np.isnan(df[col][row-1]):
-#                 new_col.append(np.nan)
-#             else:
-#                 new_col.append((df[col][row]-df[col][row-1])/(1.0/fps))
-#         df_primed[col+'_primed'] = new_col
-
-#     return df_primed #, df_truncated
     
 
 def calculate_metafeatures(df,fps):
@@ -1027,7 +1009,7 @@ def calculate_features(vid_file, tracking_method = 'mRCNN'):
     
 
 def score_behavior(feature_file, behavior_model_file, behavior_sig, fps,
-                   save_path, output = False):
+                   save_path, save_scores = True, return_scores = False):
     '''Applies the model and scaler in <behavior_model_file> to the features
     in <feature_file> (the model needs to have been trained on the same types
     of features), smooths the probabilities by <behavior_sig> * <fps>, and
@@ -1061,11 +1043,12 @@ def score_behavior(feature_file, behavior_model_file, behavior_sig, fps,
     df_preds_2 = pd.DataFrame(preds_dict)
     df_preds = pd.concat([df_preds_1, df_preds_2], axis=1)
     
-    if output:
-        return df_preds
-    else:
+    if save_scores:
         df_preds.to_csv(save_path + r'\computer_behavior_scores.csv',
                         index = False)
+    if return_scores:
+        return df_preds
+    
     
 
 

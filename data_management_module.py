@@ -2,7 +2,7 @@
 """
 Created on Mon May 23 16:14:50 2022
 
-This module contains methods for writing and reading .csv file of tracking
+This module contains methods for writing and reading .csv files of tracking
 inputs and outputs.
 
 Known issues and potential improvements:
@@ -18,9 +18,11 @@ import numpy as np
 
 
 def save_params_csv(params, save_path, save_name = 'tracking_parameters'):
+    '''Saves the tracking parameters <params> in <save_path> as 
+    <tracking_parameters>.csv, creating the directory if needed'''
     
     if not os.path.exists(save_path):
-        print('Creating directory for tracking parameters and output: '+ \
+        print('Creating directory for tracking parameters and output: ' + \
               save_path)
         os.makedirs(save_path)
     
@@ -28,11 +30,9 @@ def save_params_csv(params, save_path, save_name = 'tracking_parameters'):
     
     with open(save_file_csv, mode='w',newline="") as csv_file: 
         keys = list(params.keys())
-        
         parameters_writer = csv.writer(csv_file, delimiter=';',
-                                       quotechar='"',
-                                       quoting=csv.QUOTE_MINIMAL)
-        
+                                       quotechar = '"',
+                                       quoting = csv.QUOTE_MINIMAL)
         row = ['Parameter','Value']
         parameters_writer.writerow(row)
         
@@ -45,37 +45,37 @@ def save_params_csv(params, save_path, save_name = 'tracking_parameters'):
 
 
 def load_parameter_csv(csv_filename):
-    parameters = dict()
     
+    parameters = dict()
     
     with open(csv_filename, newline="") as csv_file: 
         parameters_reader = csv.reader(csv_file, delimiter=';',
                                        quotechar='"')
         for r in parameters_reader:
+     
             if r[0] == 'Parameter' or r[1] == '':
                 pass
             elif r[0] == 'human_checked':
                 if r[1]  == 'True' or r[1]  == 'TRUE':
                     r[1] = True
                 else:
-                    r[1] = False
-                
+                    r[1] = False  
             elif r[0] == 'area_bnds':
                 transdict = {91: None, 93: None, 40: None, 41: None,
                              44: None}
                 r[1] = r[1].translate(transdict).split(sep=' ')
-                r[1] =  [int(r[1][n]) for n in range(len(r[1]))]
+                r[1] =  [int(r[1][n]) for n in range(len(r[1]))]  
             elif r[0] == 'k_sig' or r[0] == 'um_per_pix' or \
                 r[0] == 'behavior_sig':
+                
                 try:
-                    r[1] = float(r[1])
+                    r[1] = float(r[1])    
                 except:
                     pass
                 
             elif r[0] == 'bkgnd_meth' or r[0] == 'mask_RCNN_file' or r[0] == \
                 'behavior_model_file': # strings
                 pass
-            
             else: # all other params should be integers
                 r[1] = int(r[1])
                     
@@ -83,6 +83,7 @@ def load_parameter_csv(csv_filename):
                 parameters[r[0]] = r[1]
     
     return parameters
+
 
 
 def save_centroids(centroids, first_frames, save_path, 
@@ -124,10 +125,13 @@ def load_centroids_csv(centroids_file):
     xs = []
     ys = []
     first_frames = []
+    
     with open(centroids_file) as csv_file:
         csv_reader = csv.reader(csv_file, delimiter=',')
         row_count = 0
+        
         for row in csv_reader:
+            
             if row_count == 0:
                 print(f'Column names are {", ".join(row)}')
                 row_count += 1
@@ -140,8 +144,10 @@ def load_centroids_csv(centroids_file):
     
     # reshape into the proper format
     centroids = []
+    
     for w in range(len(xs)):
         centroids_w = []
+        
         for f in range(len(xs[w])):
             centroids_w.append(np.array((xs[w][f],ys[w][f])))
         centroids.append(centroids_w)
@@ -171,6 +177,7 @@ def save_centerlines(centerlines, centerline_flags, first_frames,
             
             # write row 1: frame number
             row = ['frame']
+            
             for f in np.arange(first_frames[w],
                                first_frames[w]+len(centerlines[w])):
                 row.append(str(int(f+1)))
@@ -178,13 +185,16 @@ def save_centerlines(centerlines, centerline_flags, first_frames,
             
             # write row 2: centerline flag
             row = ['flag']
+            
             for f in np.arange(len(centerline_flags[w])):
                 row.append(str(int(centerline_flags[w][f])))
             writer.writerow(row)
             
             # write remaining rows: centerline point coordinates
             for xy in range(2):
+                
                 for p in range(np.shape(centerlines[w])[2]):
+                    
                     if xy == 0:
                         row = ['x'+str(p)]
                     else:
@@ -194,8 +204,7 @@ def save_centerlines(centerlines, centerline_flags, first_frames,
                             centerlines[w][t][0,p,xy]),1))
                             )
                     writer.writerow(row)
-                
-            
+                      
     print("Centerlines saved in " + save_path + '\\' + save_dir)
     
 
@@ -224,6 +233,7 @@ def save_end_angles(end_angles, save_path, number):
             # write remaining rows: worm numbers and angles
             for w, angs in enumerate(end_angles):
                 row = [str(w)]
+                
                 for ang in angs:
                     row.append(str(ang))
                 writer.writerow(row)
@@ -240,35 +250,41 @@ def load_centerlines_csv(save_path, N = 50):
     centerline_flags = list()
     centerline_files = os.listdir(save_path)
     w = 0
+    
     for file in range(len(centerline_files)):
         csv_filename = save_path + '\\' + centerline_files[file]
+        
         if csv_filename[-15:] == 'worm_' + "{:06d}".format(w) + '.csv':
+            
             with open(csv_filename, newline="") as csv_file: 
                 centerlines_reader = csv.reader(csv_file, delimiter=',',
                                                 quotechar='"')
                 for r in centerlines_reader:
+                    
                     if r[0]=='frame':
                         numf = 1+int(r[-1])-int(r[1]); f = 0
-                        centerlines_worm = np.empty((numf,1,N,2))
-                        
+                        centerlines_worm = np.empty((numf,1,N,2))     
                     elif r[0] == 'x0' or r[0] == 'y0':
                         p = 0
                         
                     if r[0] == 'flag':
                         centerline_flags_worm = list()
+                        
                         for ff in range(len(r)-1):
                             centerline_flags_worm.append(int(r[ff+1]))
                     
                     if r[0][0] == 'x':
+                        
                         for f in range(len(r)-1):
                             centerlines_worm[f,0,p,0] = float(r[f+1])
                         p+=1
                     elif r[0][0] == 'y':
+                        
                         for f in range(len(r)-1):
                             centerlines_worm[f,0,p,1] = float(r[f+1])
                         p+=1        
+            
             w += 1
-            #import pdb; pdb.set_trace()
             centerlines.append(list(centerlines_worm))
             centerline_flags.append(centerline_flags_worm)
         
