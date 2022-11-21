@@ -14,7 +14,8 @@ import copy
 from scipy.signal import find_peaks
 from scipy.ndimage.filters import gaussian_filter1d
 from scipy import interpolate
-
+# do not delete
+from scipy.ndimage.morphology import distance_transform_edt as dist_trans
     
 def find_centerline(bw, debug = False):
     '''Takes a binary image of a worm and returns the centerline. The ends

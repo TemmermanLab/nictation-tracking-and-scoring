@@ -175,9 +175,9 @@ def tracking_GUI():
     tracking_GUI.configure(background = "black")
     # get character size / line spacing in pixels
     chr_h_px = tkinter.font.Font(
-        root = tracking_GUI, font=('Courier',12,NORMAL)).metrics('linespace')
+        root = tracking_GUI, font=('Courier',12,'normal')).metrics('linespace')
     chr_w_px = tkinter.font.Font(
-        root = tracking_GUI, font=('Courier',12,NORMAL)).measure('m')
+        root = tracking_GUI, font=('Courier',12,'normal')).measure('m')
     
     # make the main window as wide and a bit taller than the vid info window
     tracking_GUI.geometry(str(int(w*chr_w_px))+"x"+str(int(chr_h_px*(h+3))))
@@ -189,7 +189,7 @@ def tracking_GUI():
 
 
     # informational window
-    vid_inf = Text(tracking_GUI, height = h, width = w)
+    vid_inf = tkinter.Text(tracking_GUI, height = h, width = w)
     vid_inf.configure(font=("Courier", 12))
     vid_inf.grid(row = 1, column = 0, columnspan = 6, padx = 0, pady = 0)
     
