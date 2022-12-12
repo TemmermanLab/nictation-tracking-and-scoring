@@ -52,6 +52,13 @@ import tracker as tracker
 # this
 os.environ['KMP_DUPLICATE_LIB_OK']='True'
 
+# hard-coded settings (for now)
+multiprocessing = False
+if multiprocessing:
+    from multiprocess import Pool
+    #from pathos.multiprocessing import ProcessPool
+
+    
 
 # tracking GUI
 def tracking_GUI():
@@ -127,6 +134,7 @@ def tracking_GUI():
 
     
     def track_button():
+        nonlocal trackers # was not needed before adding pooling, ikd why
         
         # ask if user wants to also calulate features and score behavior
         root = tk.Tk()
@@ -134,16 +142,128 @@ def tracking_GUI():
          message='Do you also want to calculate features and score behavior?')
         root.destroy()
         
-        for t in trackers:
-            t.track()
+        t0 = time.time()
+        
+        #import pdb; pdb.set_trace()
+        if multiprocessing:
+            print('Using multiprocessing')
             
-            if keep_going:
+ 
+            # # this does nothing at all
+            # def run_analysis(t):
+            #     t.track()
+            #     #if keep_going:
+            #     t.calculate_features()
+            #     t.score_behavior()
+            #     a = 1
+            #     return a
+            
+            # import pdb; pdb.set_trace()
+            # p = Pool(3)
+            # ys_pool = p.map_async(run_analysis, trackers)
+            
+            def run_analysis(vid_file):
+                
+                # re-initialize the tracker objects here in the pool function
+                dummy = 1
+                t = tracker.Tracker(vid_file)
+                t.track()
                 t.calculate_features()
                 t.score_behavior()
+                return dummy
             
-            update_vid_inf(trackers)
+            v_files = []
+            for t in trackers:
+                v_files.append(t.vid_path+'//'+t.vid_name)
+                # keep_goings.append(keep_going)
+            import pdb; pdb.set_trace()
+            del trackers # not sure if this is necessary 
+            p = Pool(3)
+            ys_pool = p.map_async(run_analysis, v_files)
+            
+            ##################################################################
+            
+            # # fails, does not do anything when run in Spyder
+            # def run_analysis(vid_file, keep_going):
+            #     # re-initialize the tracker objects here in the pool function
+            #     import pdb; pdb.set_trace()
+            #     dummy = 1
+            #     t = tracker.Tracker(vid_file)
+            #     t.track()
+            #     if keep_going:
+            #         t.calculate_features()
+            #         t.score_behavior()
+            #     return dummy
+            
+            # def run_analysis(vid_file, keep_going):
+            #     return 4
+            
+            # # you cannot pass non picklable things like cv2.VideoCapture
+            # # objects to the pool function, so the workaround is to 
+            # # re-initialize the tracker objects inside the pool function
+            # # run_analysis
+            # v_files = []; keep_goings = []
+            
+            # for t in trackers:
+            #     v_files.append(t.vid_path+'//'+t.vid_name)
+            #     keep_goings.append(keep_going)
+            
+            # del trackers # not sure if this is necessary 
+            
+            # pool = ProcessPool(nodes=3)
+            # dummies = pool.map(run_analysis, v_files, keep_goings) # non blocking map, seems fastest
+            
+            ##################################################################
+            
+            # # fails, something about pickling
+            # def run_analysis(tracker, keep_going):
+            #     t.track()
+            #     if keep_going:
+            #         t.calculate_features()
+            #         t.score_behavior()
+            
+            # jobs = []
+            
+            # for t in trackers:
+            #     #out_list = list()
+            #     process = multiprocessing.Process(target=run_analysis, 
+            #                                       args=(t, keep_going))
+            #     jobs.append(process)
         
-        print(time.ctime())
+            # # Start the processes (i.e. calculate the random number lists)      
+            # for j in jobs:
+            #     j.start()
+        
+            # # Ensure all of the processes have finished
+            # for j in jobs:
+            #     j.join()
+            
+            
+        else:
+            
+            for t in trackers:
+                t.track()
+                
+                if keep_going:
+                    t.calculate_features()
+                    t.score_behavior()
+        
+        print('WARNING: tracking objects deleted')
+            #update_vid_inf(trackers)
+        
+        t_elap = time.time()-t0 
+        
+        if t_elap < 60:
+            print('Tracking took ' + str(round(t_elap,1)) + \
+                   ' seconds for ' + str(len(trackers)) + ' videos.')
+        elif t_elap < 3600:
+            print('Tracking took ' + str(round(t_elap/60,1)) + \
+                   ' minutes for ' + str(len(trackers)) + ' videos.')
+        else:
+            print('Tracking took ' + str(round(t_elap/3600,1)) + \
+                   ' hours for ' + str(len(trackers)) + ' videos.')
+                
+        print('Finished ' + str(time.ctime()))
 
 
     def calculate_features_button():
@@ -259,6 +379,9 @@ def tracking_GUI():
 
 
 if __name__ == '__main__':
+    # needed for multiprocess
+    __spec__ = "ModuleSpec(name='builtins', loader=<class '_frozen_importlib.BuiltinImporter'>)"
+
     try:
         tracking_GUI()
     except:

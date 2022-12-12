@@ -16,6 +16,9 @@ Issues and improvements:
 @author: Temmerman Lab
 """
 
+import random
+# random.seed(0)
+
 import numpy as np
 import pandas as pd
 import pickle
@@ -446,7 +449,7 @@ def split(df_masked, prop_train = 0.75, rand_split = False):
     
     if rand_split:
         # start the split at s and wrap instead of starting at zero
-        offset = int(np.round(np.random.rand()*len(y)))
+        offset = int(np.round(random.random()*len(y)))
     else:
         offset = 0
         

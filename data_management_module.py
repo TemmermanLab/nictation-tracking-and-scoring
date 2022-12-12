@@ -47,12 +47,12 @@ def save_params_csv(params, save_path, save_name = 'tracking_parameters'):
 def load_parameter_csv(csv_filename):
     
     parameters = dict()
-    
+   
     with open(csv_filename, newline="") as csv_file: 
         parameters_reader = csv.reader(csv_file, delimiter=';',
                                        quotechar='"')
         for r in parameters_reader:
-     
+            print(r)
             if r[0] == 'Parameter' or r[1] == '':
                 pass
             elif r[0] == 'human_checked':
@@ -75,7 +75,7 @@ def load_parameter_csv(csv_filename):
                 
             elif r[0] == 'bkgnd_meth' or r[0] == 'mask_RCNN_file' or r[0] == \
                 'behavior_model_file': # strings
-                pass
+                 r[1] = str(r[1])
             else: # all other params should be integers
                 r[1] = int(r[1])
                     
@@ -289,3 +289,8 @@ def load_centerlines_csv(save_path, N = 50):
             centerline_flags.append(centerline_flags_worm)
         
     return centerlines, centerline_flags
+
+
+if __name__ == '__main__':
+    param_file = 'C://Users//PDMcClanahan//Dropbox//Temmerman_Lab//data//Celegans_vid_cropped_scaled//Luca_T2_Rep1_day60002 22-01-18 11-49-24_crop_1_to_300_inc_3_scl_0.5_tracking//tracking_parameters.csv'
+    params = load_parameter_csv(param_file)
