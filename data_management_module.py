@@ -248,10 +248,11 @@ def load_centerlines_csv(save_path, N = 50):
     
     centerlines = list()
     centerline_flags = list()
-    centerline_files = os.listdir(save_path)
+    centerline_files = sorted(os.listdir(save_path))
     w = 0
     
     for file in range(len(centerline_files)):
+        
         csv_filename = save_path + '\\' + centerline_files[file]
         
         if csv_filename[-15:] == 'worm_' + "{:06d}".format(w) + '.csv':
@@ -264,6 +265,7 @@ def load_centerlines_csv(save_path, N = 50):
                     if r[0]=='frame':
                         numf = 1+int(r[-1])-int(r[1]); f = 0
                         centerlines_worm = np.empty((numf,1,N,2))     
+                    
                     elif r[0] == 'x0' or r[0] == 'y0':
                         p = 0
                         
@@ -278,6 +280,7 @@ def load_centerlines_csv(save_path, N = 50):
                         for f in range(len(r)-1):
                             centerlines_worm[f,0,p,0] = float(r[f+1])
                         p+=1
+                        
                     elif r[0][0] == 'y':
                         
                         for f in range(len(r)-1):

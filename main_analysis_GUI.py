@@ -13,6 +13,8 @@ workflow is:
     4. Exit
 
 Known issues and improvements:
+    -option to pick up where left off for partially-done analysis, useful if
+     computer crashes during a large chunk
     -recalculate background when bkgnd_num_frames is changed
     -grab current values when existing from parameter GUI (
         uld be separate
@@ -109,7 +111,7 @@ def tracking_GUI():
         
         print('Fetching video info '+data_path)
         
-        vid_names = os.listdir(data_path)
+        vid_names = sorted(os.listdir(data_path))
         for v in reversed(range(len(vid_names))):
             if len(vid_names[v])<4 or vid_names[v][-4:] != '.avi':
                 pass
@@ -268,8 +270,16 @@ def tracking_GUI():
 
     def calculate_features_button():
         for t in trackers:
-            t.calculate_features()
-    
+            try:
+                t.calculate_features()
+            except:
+                import pdb
+                import sys
+                import traceback
+                extype, value, tb = sys.exc_info()
+                traceback.print_exc()
+                pdb.post_mortem(tb)
+            
     
     def score_button():
         for t in trackers:

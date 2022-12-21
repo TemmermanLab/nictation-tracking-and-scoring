@@ -116,8 +116,8 @@ def blur(vid, vid_f, w, f, centroid, centerline, um_per_pix, halfwidth):
     bw = np.zeros(np.shape(img))
     for p in range(len(centerline)):
         try:
-            bw[np.round(centerline[p][1]).astype(np.uint16),
-               np.round(centerline[p][0]).astype(np.uint16)] = 255
+            bw[np.round(centerline[p][1]).astype(np.int16),
+               np.round(centerline[p][0]).astype(np.int16)] = 255
         except:
             pass
     
@@ -129,7 +129,7 @@ def blur(vid, vid_f, w, f, centroid, centerline, um_per_pix, halfwidth):
                                 np.shape(img)[1]+halfwidth*2)))
     canvas[halfwidth:np.shape(img)[0]+halfwidth,
            halfwidth:np.shape(img)[1]+halfwidth] = img
-    centroid = np.uint16(np.round(centroid))
+    centroid = np.int16(np.round(centroid))
     crop = canvas[centroid[1]:(centroid[1]+2*halfwidth),
                   centroid[0]:(2*halfwidth+centroid[0])]
     
@@ -153,8 +153,8 @@ def bkgnd_sub_blur(vid, vid_f, w, f, centroid, centerline, um_per_pix,
     bw = np.zeros(np.shape(img))
     for p in range(len(centerline)):
         try:
-            bw[np.round(centerline[p][1]).astype(np.uint16),
-               np.round(centerline[p][0]).astype(np.uint16)] = 255
+            bw[np.round(centerline[p][1]).astype(np.int16),
+               np.round(centerline[p][0]).astype(np.int16)] = 255
         except:
             pass
     
@@ -166,7 +166,7 @@ def bkgnd_sub_blur(vid, vid_f, w, f, centroid, centerline, um_per_pix,
                                 np.shape(img)[1]+halfwidth*2)))
     canvas[halfwidth:np.shape(img)[0]+halfwidth,
            halfwidth:np.shape(img)[1]+halfwidth] = img
-    centroid = np.uint16(np.round(centroid))
+    centroid = np.int16(np.round(centroid))
     crop = canvas[centroid[1]:(centroid[1]+2*halfwidth),
                   centroid[0]:(2*halfwidth+centroid[0])]
     
@@ -189,8 +189,8 @@ def bkgnd_sub_ends_blur_diff(vid, vid_f, w, f, centerline, um_per_pix,
     
     bw = np.zeros(np.shape(img))
     # for p in range(len(centerline)):
-    #     bw[np.round(centerline[p][1]).astype(np.uint16),
-    #        np.round(centerline[p][0]).astype(np.uint16)] = 255
+    #     bw[np.round(centerline[p][1]).astype(np.int16),
+    #        np.round(centerline[p][0]).astype(np.int16)] = 255
     
     # kernel = np.ones((blur_radius,blur_radius),np.uint8)
     # bw = cv2.dilate(bw,kernel,iterations = 1)
@@ -201,20 +201,20 @@ def bkgnd_sub_ends_blur_diff(vid, vid_f, w, f, centerline, um_per_pix,
     canvas[halfwidth:np.shape(img)[0]+halfwidth,
            halfwidth:np.shape(img)[1]+halfwidth] = img
     
-    crop1 = canvas[halfwidth + np.round(centerline[0][1].astype(np.uint16)) - 
+    crop1 = canvas[halfwidth + np.round(centerline[0][1].astype(np.int16)) - 
                    blur_radius : halfwidth + 
-                   np.round(centerline[0][1].astype(np.uint16)) + blur_radius,
-                   halfwidth + np.round(centerline[0][0].astype(np.uint16)) - 
+                   np.round(centerline[0][1].astype(np.int16)) + blur_radius,
+                   halfwidth + np.round(centerline[0][0].astype(np.int16)) - 
                    blur_radius : halfwidth + 
-                   np.round(centerline[0][0].astype(np.uint16)) + blur_radius]
+                   np.round(centerline[0][0].astype(np.int16)) + blur_radius]
     
-    crop2 = canvas[halfwidth + np.round(centerline[-1][1].astype(np.uint16)) -
+    crop2 = canvas[halfwidth + np.round(centerline[-1][1].astype(np.int16)) -
                    blur_radius : halfwidth + 
-                   np.round(centerline[-1][1].astype(np.uint16)) + \
+                   np.round(centerline[-1][1].astype(np.int16)) + \
                        blur_radius,
-                   halfwidth + np.round(centerline[-1][0].astype(np.uint16)) - 
+                   halfwidth + np.round(centerline[-1][0].astype(np.int16)) - 
                    blur_radius : halfwidth + 
-                   np.round(centerline[-1][0].astype(np.uint16)) + \
+                   np.round(centerline[-1][0].astype(np.int16)) + \
                        blur_radius]
     
     
@@ -515,8 +515,8 @@ def diff_img_act(vid, centerlines, ffs):
                 for p in range(len(centerline)):
                     # current centerline
                     try:
-                        mask[np.round(centerline[p][1]).astype(np.uint16),
-                           np.round(centerline[p][0]).astype(np.uint16)] = 255
+                        mask[np.round(centerline[p][1]).astype(np.int16),
+                           np.round(centerline[p][0]).astype(np.int16)] = 255
                     except:
                         pass
                     

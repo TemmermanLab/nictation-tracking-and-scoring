@@ -900,6 +900,7 @@ def calculate_features(vid_file, tracking_method = 'mRCNN'):
     halfwidth = 88
     path_f = 3
     
+    
     # load centroids, first frames, centerlines, and centerline flags
     cents, ffs  = dmm.load_centroids_csv(
         os.path.splitext(vid_file)[0] + tracking_method + \
@@ -1187,7 +1188,7 @@ if __name__ == '__main__':
 
         
         vid_dir = r"D:\Data_flp_7_updated"
-        file_list = os.listdir(vid_dir)
+        file_list = sorted(os.listdir(vid_dir))
         for f in file_list[:]:
             if f[-4:] == '.avi' and f[:-4]+'_tracking' in file_list:
                 calculate_features(vid_dir + '\\' + f)
