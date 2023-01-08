@@ -50,10 +50,8 @@ Known issues:
 import numpy as np
 import matplotlib.pyplot as plt
 import cv2
-import random
 import copy
 import sys
-import os
 import pickle
 from datetime import datetime
 from scipy import interpolate
