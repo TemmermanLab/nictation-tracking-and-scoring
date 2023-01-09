@@ -29,12 +29,19 @@ def find_centerline(bw, debug = False):
     
     if debug:
         import matplotlib.pyplot as plt
+        #import pdb; pdb.set_trace()
         
+    # method of morphological closing until 20230109
     # get rid of small holes
+    # strel = cv2.getStructuringElement(cv2.MORPH_CROSS, (3,3))
+    # bw = cv2.dilate(bw1.astype('uint8'), strel)
+    # bw = cv2.erode(bw, strel, borderType = cv2.BORDER_CONSTANT, 
+    #                borderValue = 0)
+    
+    # should be the same as the above method, but does not result in the crash
+    # reported by Tuan Anh on 20230109
     strel = cv2.getStructuringElement(cv2.MORPH_CROSS, (3,3))
-    bw = cv2.dilate(bw.astype('uint8'), strel)
-    bw = cv2.erode(bw, strel, borderType = cv2.BORDER_CONSTANT, 
-                   borderValue = 0)
+    bw = cv2.morphologyEx(bw.astype(np.uint8), cv2.MORPH_CLOSE, strel)
 
     # find the two ends
     
