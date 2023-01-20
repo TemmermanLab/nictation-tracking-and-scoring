@@ -229,9 +229,19 @@ try:
     # create_vignettes(vid_name, vid_path, centroids, centerlines, first_frames)
     
     
-    vid_name = 'Sc_smell1_V2.avi'
-    vid_path = r'D:\Pat working\Scarpocapsae_nictation_dataset'
-    vid_tracking_path = '\\Sc_smell1_V2_mRCNN_tracking\\'
+    # vid_name = 'Sc_smell1_V2.avi'
+    # vid_path = r'D:\Pat working\Scarpocapsae_nictation_dataset'
+    # vid_tracking_path = '\\Sc_smell1_V2_mRCNN_tracking\\'
+    # centroids_file = vid_path + vid_tracking_path + 'centroids.csv'
+    # centroids, first_frames = dm.load_centroids_csv(centroids_file)
+    # centerlines_path = vid_path + vid_tracking_path + '\\centerlines'
+    # centerlines, flags = dm.load_centerlines_csv(centerlines_path)
+    # hw = create_vignettes(vid_name, vid_path, centroids, centerlines,
+    #                       first_frames)
+    
+    vid_name = 'Sc_smell2_V2.avi'
+    vid_path = r'E:\Scarpocapsae_nictation_dataset'
+    vid_tracking_path = '\\Sc_smell2_V2_tracking\\'
     centroids_file = vid_path + vid_tracking_path + 'centroids.csv'
     centroids, first_frames = dm.load_centroids_csv(centroids_file)
     centerlines_path = vid_path + vid_tracking_path + '\\centerlines'

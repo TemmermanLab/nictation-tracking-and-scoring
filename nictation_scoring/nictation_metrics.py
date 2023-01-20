@@ -84,7 +84,8 @@ def initiation_rate(scores, only_active = True, fps = 5, binary = True):
     '''takes a list of nictation behavior scores and finds the number of 
     transitions from not nictating to nictating divided by the total time not
     nictating. If <only_active> is true, only transitions from crawling to 
-    waving are counted, and only crawling is counted as time not nictating.'''
+    waving are counted, and only crawling is counted as time not nictating.
+    These counts are converted to a rate (Hz) and returned.'''
     
     if not binary:
         trans_mat = np.zeros((5,5))

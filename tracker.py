@@ -24,6 +24,8 @@ Created on Wed Oct 13 20:56:56 2021
     -cut down in sig figs in feature spreadsheets
     -in feature / score spreadsheets, refer to video frame instead of track
     frame
+    -worm IDs seem to get swapped more often a the beginning and end of a
+    track, see note on 20230117
 
 @author: PDMcClanahan
 """

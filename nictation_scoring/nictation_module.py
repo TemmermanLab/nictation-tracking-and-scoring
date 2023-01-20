@@ -12,6 +12,8 @@ Issues and improvements:
     -Evaluate models only takes training data from one video
     -Currently features have 16 digits, they could do with fewer
     -This file is very disorganized
+    -the split function and possibly others imply incorrect terminology (test
+     should be val)
 
 @author: Temmerman Lab
 """
@@ -169,6 +171,31 @@ def combine_and_prepare_man_scores_and_features(vid_file, score_file = None,
     
     return df_masked
 
+
+def remove_censored_frames(df):
+    '''Removes from the dataframe rows in which the frame was scored as
+    censored, frames one or two frames away, provided they are part of the 
+    same worm track. In the future, it could also remove disconnected parts of
+    tracks that are left behind'''
+    
+    df = df.reset_index()
+   
+    i_del = []
+    for f in range(len(df)):
+        if df['manual_behavior_label'][f] == -1:
+            i_del.append(f)
+            
+            w = df['worm'][f]
+            for offset in [-2,-1,1,2]:
+                if f+offset >=0 and f+offset < len(df):
+                    if df['worm'][f+offset] == w and f+offset not in i_del:
+                        i_del.append(f+offset)
+    
+    df = df.drop(index=i_del)
+    # df = df.reset_index()
+    # df = df.drop(columns = 'level_0')
+    return df.reset_index().drop(columns = ['index','level_0'])
+    
 
 def evaluate_models_accuracy_2(vid_file_train, vid_file_test, **kwargs):
     '''Same as evaluate_models_accuracy except that accuracy is also evaluated
@@ -360,16 +387,17 @@ def evaluate_models_accuracy_2(vid_file_train, vid_file_test, **kwargs):
 
 
 
+
 def separate_list_by_worm(lst, df):
     '''Takes a continuous list <lst> and splits it into a list of lists 
     based on the worm numbers in <df>'''
     
     lst = np.array(lst)
     lst_by_worm = []
-    df_zeroi = df.reset_index()
+    df_zeroi = df.reset_index(drop = True)
     
-    num_w =  int(df.loc[df['worm'].idxmax()][0]) + 1
-    for w in range(num_w):
+    #num_w =  int(df.loc[df['worm'].idxmax()][0]) + 1
+    for w in np.unique(df['worm']):
         inds = df_zeroi.index[df_zeroi['worm'] == w].tolist()
         lst_by_worm.append(lst[inds])
     
@@ -477,6 +505,21 @@ def split(df_masked, prop_train = 0.75, rand_split = False):
         wi_test_spl
 
 
+def split_by_w_ind(df, ind_train, ind_val):
+    '''Splits the data in df into training and validation X (features), y 
+    (manual scores), and wi (worm number and frame) based on the indices in 
+    <ind_train> and <ind_val>'''
+
+    
+    X_train = df[df.columns[4:]].iloc[ind_train]
+    y_train = df['manual_behavior_label'].iloc[ind_train]
+    wi_train = df[df.columns[0:3]].iloc[ind_train]
+    
+    X_val = df[df.columns[4:]].iloc[ind_val]
+    y_val = df['manual_behavior_label'].iloc[ind_val]
+    wi_val = df[df.columns[0:3]].iloc[ind_val]
+    
+    return X_train, X_val, y_train, y_val, wi_train, wi_val
 
 
 def load_centroids_csv(centroids_file):
@@ -846,8 +889,8 @@ def scramble_df_col(df, cols_to_scramble, rand_rand = False):
 
 
 # USED
-def learn_and_predict(X_train, X_test, y_train, y_test,
-                      model_type = 'random forest', print_acc = True):
+def learn_and_predict(X_train, X_val, y_train, y_val,
+                      model_type = 'random forest', print_acc = False):
     
     if model_type == 'logistic regression':
         model = LogisticRegression(max_iter = 1000)
@@ -875,18 +918,18 @@ def learn_and_predict(X_train, X_test, y_train, y_test,
         print('Accuracy of ',model_type,' classifier on training set: {:.2f}'
              .format(model.score(X_train, y_train)))
         
-        if len(X_test) > 0:
-            print('Accuracy of ',model_type,' classifier on test set: {:.2f}'
-                 .format(model.score(X_test, y_test)))
+        if len(X_val) > 0:
+            print('Accuracy of ',model_type,' classifier on validation set: {:.2f}'
+                 .format(model.score(X_val, y_val)))
     
     train_acc = model.score(X_train, y_train)
-    if len(X_test) > 0:
-        test_acc = model.score(X_test, y_test)
-        predictions = model.predict(X_test)
-        probabilities = model.predict_proba(X_test)
+    if len(X_val) > 0:
+        val_acc = model.score(X_val, y_val)
+        predictions = model.predict(X_val)
+        probabilities = model.predict_proba(X_val)
     
-    if len(X_test) > 0:
-        return model, train_acc, test_acc, probabilities, predictions
+    if len(X_val) > 0:
+        return model, train_acc, val_acc, probabilities, predictions
     else:
         return model, train_acc
 
