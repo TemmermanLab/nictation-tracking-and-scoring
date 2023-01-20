@@ -6,6 +6,7 @@
 *.p
 *.avi
 *.bmp
+*.pyc
 ).tif
 
 *build/

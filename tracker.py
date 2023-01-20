@@ -94,6 +94,7 @@ class Tracker:
         'deformable_model_scale' : 0.5,
         'summary_video_scale' : 1.0,
         'stitching_method' : 'overlap', # originally it was centroid distance
+        'save_segmentations' : True
         }
     
     # model_file = os.path.split(__file__)[0] + \
@@ -365,6 +366,17 @@ class Tracker:
         
         out_scale = self.metaparameters['summary_video_scale']
         
+        
+        # set up video to hold segmentations if called for
+        if self.metaparameters['save_segmentations']:
+            seg_vid_name = self.save_path + '\\' + \
+                os.path.splitext(self.vid_name)[0] + '_segmentations.avi'
+            seg_vid_w = int(self.vid.get(cv2.CAP_PROP_FRAME_WIDTH))
+            seg_vid_h = int(self.vid.get(cv2.CAP_PROP_FRAME_HEIGHT))
+            seg_v_out = cv2.VideoWriter(seg_vid_name,
+                cv2.VideoWriter_fourcc('M','J','P','G'),
+                self.vid.get(cv2.CAP_PROP_FPS), (seg_vid_w,seg_vid_h), 0)
+        
         # set up model if using mask RCNN
         if self.segmentation_method == 'mask_RCNN':
             self.model, self.device = mrcnn.prepare_model(
@@ -404,20 +416,35 @@ class Tracker:
             ret,img = self.vid.read(); img = cv2.cvtColor(img,
                                                           cv2.COLOR_BGR2GRAY)
             
-            centroids_frame, centerlines_frame, centerline_flags_frame, \
-                    angles_end_1_frame, angles_end_2_frame = \
-                        self.find_worms(img, self.segmentation_method,
-                            self.metaparameters, self.parameters, 
-                            self.background, self.model, self.device, 
-                            self.scale_factor)
+            # import pdb; pdb.set_trace()
+            if not self.metaparameters['save_segmentations']:
+                centroids_frame, centerlines_frame, centerline_flags_frame, \
+                        angles_end_1_frame, angles_end_2_frame = \
+                            self.find_worms(img, self.segmentation_method,
+                                self.metaparameters, self.parameters, 
+                                self.background, self.model, self.device, 
+                                self.scale_factor)
+            else:
+                centroids_frame, centerlines_frame, centerline_flags_frame, \
+                        angles_end_1_frame, angles_end_2_frame, bin_seg = \
+                            self.find_worms(img, self.segmentation_method,
+                                self.metaparameters, self.parameters, 
+                                self.background, self.model, self.device, 
+                                self.scale_factor)
+                            
+                # save binary segmentation image
+                seg_v_out.write(bin_seg)
             
+           
             self.stitch_centroids(centroids_frame, centerlines_frame,
                                   centerline_flags_frame, angles_end_1_frame,
                                   angles_end_2_frame, i)
             
             track_loop_times.append(time.time()-start_time)
         
-        #import pdb; pdb.set_trace()
+        if self.metaparameters['save_segmentations']:
+            seg_v_out.release()
+        
         plt.plot(track_loop_times,'k.')
         average = round(np.sum(track_loop_times)/len(track_loop_times),2)
         plt.title('Tracking Loop Timing ('+str(average)+' s per frame)')
@@ -511,7 +538,7 @@ class Tracker:
     @staticmethod
     def find_worms(img, segmentation_method, metaparameters, parameters,
                    background = None, model = None, device = None, 
-                   scale_factor = None, return_bw = False):
+                   scale_factor = None):
         # debug, max_centerline_angle, max_centerline_length, k_sig, bw_thr, area_bnds, segmentation_method, model, device, scale_factor, background, edge_proximity_cutoff, centerline_method
         debug = False # for find_centerline, do not comment out or will crash
         
@@ -595,10 +622,10 @@ class Tracker:
                         angles_end_2.append(angle_end_2)
                         
         # re-arrange centroids
-        if metaparameters['centerline_method'] != 'none' and not return_bw:
+        if metaparameters['centerline_method'] != 'none' and not metaparameters['save_segmentations']:
             return centroids, centerlines, centerline_flags, angles_end_1, angles_end_2
-        elif metaparameters['centerline_method'] != 'none' and return_bw:
-            return centroids, centerlines, centerline_flags, angles_end_1, angles_end_2, bw_ws
+        elif metaparameters['centerline_method'] != 'none' and metaparameters['save_segmentations']:
+            return centroids, centerlines, centerline_flags, angles_end_1, angles_end_2, bw_ws # non-saving version still uses equivalent to bw
         else:
             return centroids
     
@@ -734,6 +761,12 @@ class Tracker:
         the nearest non-flagged or fixed centerline to the bw image that
         resulted in the flagged centerline'''
         
+        if self.metaparameters['save_segmentations']:
+            seg_vid_name = self.save_path + '\\' + \
+                os.path.splitext(self.vid_name)[0] + '_segmentations.avi'
+            seg_vid = cv2.VideoCapture(seg_vid_name)
+
+        
         k_sig = self.parameters['k_sig'] * (1/self.parameters['um_per_pix'])
         k_size = (round(k_sig*3)*2+1,
                   round(k_sig*3)*2+1)
@@ -834,20 +867,35 @@ class Tracker:
                     
                     # retrieve the target image (bw segmentation of the worm that
                     # caused the flagged centerline)
+                    #import pdb; pdb.set_trace()
                     unshifted_f = self.first_frames[w] + f
-                    self.vid.set(cv2.CAP_PROP_POS_FRAMES, unshifted_f)
-                    ret,img = self.vid.read(); img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-                    if self.segmentation_method == 'intensity':
-                        diff = (np.abs(img.astype('int16') - 
-                            self.background.astype('int16'))).astype('uint8')
-                    elif self.segmentation_method == 'mask_RCNN':
-                        diff = mrcnn.segment_full_frame(img, self.model,
-                                                        self.device,
-                                                        self.scale_factor)
-                    smooth = cv2.GaussianBlur(diff,k_size, k_sig,
-                                              cv2.BORDER_REPLICATE)
-                    thresh,bw = cv2.threshold(smooth,
-                            self.parameters['bw_thr'],255,cv2.THRESH_BINARY)
+                    
+                    if self.metaparameters['save_segmentations']:
+                        seg_vid.set(cv2.CAP_PROP_POS_FRAMES, unshifted_f)
+                        ret, bw = seg_vid.read();
+                        bw = cv2.cvtColor(bw, cv2.COLOR_BGR2GRAY)
+                        # the original binary image can be restored, 
+                        # apparently exactly, by thresholding the loaded frame
+                        # at a middling value (the non zero non max values are
+                        # concentrated near 0 and 255)
+                        thresh,bw = cv2.threshold(bw,127,255,cv2.THRESH_BINARY)
+                    else:
+                        self.vid.set(cv2.CAP_PROP_POS_FRAMES, unshifted_f)
+                        ret,img = self.vid.read(); 
+                        img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+                        if self.segmentation_method == 'intensity':
+                            diff = (np.abs(img.astype('int16') - 
+                                self.background.astype('int16'))).astype('uint8')
+                        elif self.segmentation_method == 'mask_RCNN':
+                            diff = mrcnn.segment_full_frame(img, self.model,
+                                                            self.device,
+                                                            self.scale_factor)
+                        smooth = cv2.GaussianBlur(diff,k_size, k_sig,
+                                                  cv2.BORDER_REPLICATE)
+                        thresh,bw = cv2.threshold(smooth,
+                                self.parameters['bw_thr'],255,cv2.THRESH_BINARY)
+                    
+                                        
                     height, width = bw.shape[:2]
                     mp = round(self.metaparameters['centerline_npts']/2)
                     
@@ -921,9 +969,7 @@ class Tracker:
                     moving_centerline_shifted_scaled = \
                         moving_centerline_shifted * scale
                     
-                    # #debugging
-                    # if target_image_scaled[0,0] == 255:
-                    #     import pdb; pdb.set_trace()
+                    
                     
                     
                     # fit the gravitational spline model to the target image
@@ -977,6 +1023,7 @@ class Tracker:
                     fix_centerline_times.append(time.time()-start_time)
                     
                 self.centerline_flags[w] = copy.deepcopy(flags.tolist())
+        
         
         plt.plot(fix_centerline_times,'k.')
         average = round(np.sum(fix_centerline_times)/len(fix_centerline_times)
