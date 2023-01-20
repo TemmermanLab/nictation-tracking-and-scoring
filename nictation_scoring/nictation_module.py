@@ -906,7 +906,7 @@ def learn_and_predict(X_train, X_val, y_train, y_val,
         model = SVC(probability = True)
         #print('WARNING: SVM probabilities may not correspond to scores.')
     elif model_type == 'random forest':
-        model = RandomForestClassifier(max_features='sqrt')
+        model = RandomForestClassifier(max_features='sqrt', random_state = 0)
     elif model_type == 'neural network':
         model = MLPClassifier()
     else:
