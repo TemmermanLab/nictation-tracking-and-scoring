@@ -7,7 +7,7 @@
 *.avi
 *.bmp
 *.pyc
-).tif
+*.tif
 
 *build/
 *dist/
