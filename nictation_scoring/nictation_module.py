@@ -51,6 +51,10 @@ from sklearn.neural_network import MLPClassifier
 from sklearn.metrics import classification_report
 from sklearn.metrics import confusion_matrix
 
+# sometimes there are convergence warnings for some models, e.g. logistic
+# regression. Rather than wait longer, I suppress the warnings.
+from sklearn.utils.testing import ignore_warnings
+from sklearn.exceptions import ConvergenceWarning
 
 # add needed module locations to path
 file_name = os.path.realpath(__file__)
@@ -167,9 +171,9 @@ def combine_and_prepare_man_scores_and_features(vid_file, score_file = None,
     df.insert(2,'manual_behavior_label',man_scores)
 
     # remove NaN values
-    df_masked = nan_inf_mask_dataframe(df)
+    df_masked, ix = nan_inf_mask_dataframe(df)
     
-    return df_masked
+    return df_masked, ix
 
 
 def remove_censored_frames(df):
@@ -354,6 +358,318 @@ def evaluate_models_accuracy_2(vid_file_train, vid_file_test, **kwargs):
                 
     
     return accs, times, NRs, IRs, SRs
+
+
+@ignore_warnings(category=ConvergenceWarning)
+def evaluate_models_x_fold_cross_val(vid_file_train, vid_file_test, 
+                                     **kwargs):
+    '''Performs x-fold cross validation of the specified models with the
+    specified smoothing sigmas usin <vid_file_train> and also evaluates
+    model performance on <vid_file_test>'''
+
+    x = kwargs.get('x',5)
+
+    model_types = kwargs.get('model_types',['logistic regression',
+        'decision tree', 'k nearest neighbors',
+        'linear discriminant analysis', 'Gaussian naive Bayes',
+        'support vector machine', 'random forest', 'neural network'])
+    
+    scaling_methods = kwargs.get('scaling_methods',['none','min max',
+                        'variance','Gaussian','whiten'])
+    
+    exclude_censored = kwargs.get('exclude_censored',False)
+    
+    exclude_unfixed_centerlines = kwargs.get('exclude_unfixed_cl',False)
+    
+    sigmas = kwargs.get('sigmas', np.arange(0,1.5,0.1))
+    
+    fps = kwargs.get('fps', 5)
+        
+    
+    
+    # load features and manual scores for the training and test videos
+    df_train, i_naninf_train = combine_and_prepare_man_scores_and_features(vid_file_train)
+    df_test, i_naninf_test = combine_and_prepare_man_scores_and_features(vid_file_test)
+    
+    
+    # # plot the abundance of worm-frames with each behavior label
+    # nict_plot.bar_count(df_train)
+    
+    accs = np.empty((len(scaling_methods),x,len(model_types),len(sigmas)
+                    ,3))
+    accs[:] = np.nan
+    
+    times = np.empty((len(scaling_methods),x,len(model_types),2))
+    times[:] = np.nan
+    
+    NRs = copy.copy(accs)
+    IRs = copy.copy(accs)
+    SRs = copy.copy(accs)
+    
+    
+    # list of frame indices to remove
+    
+    
+    # add censored frames and frames from the same worm in close proximity to
+    # the list
+    def find_censored_inds(df):
+        '''finds indices of censored and nearby frames close enough to affect
+        feature values'''
+        df = df.reset_index(drop = True)
+        ix_cen_prime = df.index[
+            df['manual_behavior_label'] == -1].tolist()
+        ix_cen_adj = []
+        for i in ix_cen_prime:
+            for offset in [-2,-1,1,2]:
+                if i+offset > 0 and i+offset < len(df) and \
+                    df.iloc[i]['worm'] == df.iloc[i+offset]['worm']:
+                    ix_cen_adj.append(i+offset)
+        return np.sort(np.unique(np.array(ix_cen_prime+ix_cen_adj)))
+    
+    
+    
+    
+    def find_unfixed_centerline_inds(df,flgs):
+        '''finds indices of centerlines still flagged after fixing and nearby
+        frames close enough to affect feature values'''
+        df = df.reset_index(drop = True)
+        ix_prime = list(np.where(flgs==3)[0])
+        ix_adj = []
+        for i in ix_prime:
+            for offset in [-2,-1,1,2]:
+                if i+offset > 0 and i+offset < len(df) and \
+                    df.iloc[i]['worm'] == df.iloc[i+offset]['worm']:
+                    ix_adj.append(i+offset)
+        return np.sort(np.unique(np.array(ix_prime+ix_adj)))
+                
+    
+    # remove flagged centerline frames and frames in close proximity
+    # 0: never flagged, 1: flagged and not fixed, 2: flagged and fixed, 
+    # 3: flagged and fixed but still meets flagging criteria. remove 1 and 3
+    def prepare_centerline_flags(vid_file, ix):
+        '''Loads centerline flags, linearizes them, and removes flags with the
+        indices ix'''
+        clns, cln_flags = dmm.load_centerlines_csv(
+            os.path.splitext(vid_file)[0] + \
+                r'_tracking\centerlines')
+        cln_flags_linear = []
+        for i in range(len(cln_flags)):
+            cln_flags_linear = cln_flags_linear + cln_flags[i] 
+        cln_flags_linear = np.array(cln_flags_linear)
+        return np.delete(cln_flags_linear,ix,0)
+
+    
+    # removal of worm frames with or nearby censored frames and flagged
+    # centerlines
+    ix_cen_train = find_censored_inds(df_train)
+    ix_cen_test = find_censored_inds(df_test)
+    
+    cln_flags_train = prepare_centerline_flags(vid_file_train, i_naninf_train)
+    ix_flg_train = find_unfixed_centerline_inds(df_train, cln_flags_train)    
+    cln_flags_test = prepare_centerline_flags(vid_file_test, i_naninf_test)
+    ix_flg_test = find_unfixed_centerline_inds(df_test, cln_flags_test)
+    
+    ix_train = np.sort(np.unique(np.array(
+        list(ix_cen_train)+list(ix_flg_train))))
+    df_train = df_train.drop(index = ix_train)
+    
+    ix_test = np.sort(np.unique(np.array(
+        list(ix_cen_test)+list(ix_flg_test))))
+    df_test = df_test.drop(index = ix_test)
+    
+    df_train = df_train.reset_index(drop = True)
+    df_test = df_test.reset_index(drop = True)
+    
+    man_scores_test_vid = separate_list_by_worm(
+        df_test['manual_behavior_label'], df_test)
+    
+    all_worms = np.sort(np.unique(df_train['worm']))
+    
+    # determine the group indices for x-fold cross validation
+    fold_inds = [list(np.arange(round(i*(len(all_worms)-1)/x),
+              round((i+1)*(len(all_worms)-1)/x))) for i in range(x)]
+    
+    # actual worm numbers in case worms were removed entirely above
+    fold_inds2 = copy.copy(fold_inds)
+    for f in range(len(fold_inds)):
+        fold_inds2[f] = all_worms[fold_inds[f]]
+        
+    # calculate some manual metric values
+    man_scores_train_vid = separate_list_by_worm(
+        df_train['manual_behavior_label'], df_train)
+    man_metrics = {
+        "NR_test": nict_met.nictation_ratio(man_scores_test_vid, False),
+        "IR_test": nict_met.initiation_rate(man_scores_test_vid, False),
+        "TR_test": nict_met.stopping_rate(man_scores_test_vid, False),
+        "NR_train": nict_met.nictation_ratio(man_scores_train_vid , False),
+        "IR_train": nict_met.initiation_rate(man_scores_train_vid , False),
+        "TR_train": nict_met.stopping_rate(man_scores_train_vid , False)
+        }
+        
+    # begin x-fold cross validation loop
+    for sm in range(len(scaling_methods)):
+        print('On scaling method '+str(sm+1)+' of '+str(len(scaling_methods)))
+        if scaling_methods[sm] != 'none':
+            df_train_scaled, scaler = scale_training_features(df_train, 
+                                    scaling_methods[sm], df_train.columns[3:])
+            
+            cols = df_test.columns[3:]
+            df_test_scaled = copy.deepcopy(df_test)
+            df_test_scaled[cols] = scaler.transform(df_test[cols])
+            
+        else:
+            df_train_scaled = copy.deepcopy(df_train)
+            df_test_scaled = copy.deepcopy(df_test)
+        
+        for t in range(x):
+            print('On fold ' + str(t+1) + ' of ' + str(x))
+
+            ####
+            
+            w_val = list(fold_inds[t])
+            w_train = []
+            for wv in range(x):
+                if wv != t:
+                    w_train = w_train + list(fold_inds2[wv])
+                    
+            
+            i_train = []
+            for w in w_train:
+                i_train = i_train + df_train_scaled.index[
+                    df_train_scaled['worm'] == w].tolist()
+            
+            i_val = []
+            for w in w_val:
+                i_val = i_val + df_train_scaled.index[
+                    df_train_scaled['worm'] == w].tolist()
+            
+            x_train, x_val, y_train, y_val, wi_train, wi_val = split_by_w_ind(
+                                              df_train_scaled, i_train, i_val)
+            del wv, w
+            
+            
+            
+            # Also separate the manual scores into training and validation parts
+            ms_train = df_train_scaled['manual_behavior_label'].iloc[i_train]
+            ms_val = df_train_scaled['manual_behavior_label'].iloc[i_val]
+            ms_test = df_test_scaled['manual_behavior_label']
+
+            
+            
+            # [np.array(ms_train_all[x]) for x in w_val]
+            # ms_train = [ms_train_all[x] for x in w_train]
+            
+            ####
+            # x_train, x_test, y_train, y_test, wi_train, wi_test = split(
+            #     df_train_scaled, 0.75, rand_split)
+            # man_scores_train_train = separate_list_by_worm(y_train, wi_train)
+            # man_scores_train_test = separate_list_by_worm(y_test, wi_test)
+            
+            for mt in range(len(model_types)):
+                print(model_types[mt])
+                
+                # train on training video and record training and test 
+                # accuracy on this video and elapsed time
+                t0 = time.time()
+                categories = np.unique(y_train) # sometimes a label is not
+                # represented in the training set
+                mod, train_acc, train_test_acc, probs, preds = \
+                    learn_and_predict(x_train, x_val, y_train, y_val,
+                                      model_types[mt])
+                train_time = time.time()-t0
+                
+                
+                # make probability infrerence on the training and test 
+                # portions of the training video to be used below
+                probs_train_train = mod.predict_proba(x_train)
+                probs_train_val = mod.predict_proba(x_val)
+                
+                # use the same model to make inferences on another video and
+                # record the elapsed time and accuracy
+                t0 = time.time()
+                probs_test_vid = mod.predict_proba(
+                    df_test_scaled[df_test_scaled.columns[4:]])
+                infr_time = time.time()-t0
+                
+                # cycle through smoothing sigmas
+                for sg in range(len(sigmas)):
+                    
+                    # smooth and inferences and calculate nictation metrics on
+                    # the training set of the training video
+                    probs_smooth = smooth_probabilities(
+                        probs_train_train, sigmas[sg], fps)
+                    preds_smooth = probabilities_to_predictions(probs_smooth,
+                                                                categories)
+                    preds_smooth_list = separate_list_by_worm(
+                        preds_smooth, wi_train)
+                
+                    ms_train_list = separate_list_by_worm(
+                            ms_train, wi_train)
+                
+                    NRs[sm,t,mt,sg,0] = nict_met.nictation_ratio(
+                        preds_smooth_list, False)
+                    IRs[sm,t,mt,sg,0] = nict_met.initiation_rate(
+                        preds_smooth_list, False)
+                    SRs[sm,t,mt,sg,0] = nict_met.stopping_rate(
+                        preds_smooth_list, False)
+                    accs[sm,t,mt,sg,0] = compare_scores_list(
+                        ms_train_list,preds_smooth_list)
+                    
+                    
+                    # smooth and inferences and calculate nictation metrics on
+                    # the test set of the training video
+                    probs_smooth = smooth_probabilities(
+                        probs_train_val, sigmas[sg], fps)
+                    preds_smooth = probabilities_to_predictions(probs_smooth,
+                                                                categories)
+                    preds_smooth_list = separate_list_by_worm(
+                        preds_smooth, wi_val)
+                    
+                    ms_val_list = separate_list_by_worm(
+                        ms_val, wi_val)
+                
+                    NRs[sm,t,mt,sg,1] = nict_met.nictation_ratio(
+                        preds_smooth_list, False)
+                    IRs[sm,t,mt,sg,1] = nict_met.initiation_rate(
+                        preds_smooth_list, False)
+                    SRs[sm,t,mt,sg,1] = nict_met.stopping_rate(
+                        preds_smooth_list, False)
+                    accs[sm,t,mt,sg,1] = compare_scores_list(
+                        ms_val_list, preds_smooth_list)
+                    
+                    
+                    # smooth and inferences and calculate nictation metrics on
+                    # the separate test video
+                    
+                    probs_smooth = smooth_probabilities(
+                        probs_test_vid, sigmas[sg], fps)
+                    preds_smooth = probabilities_to_predictions(probs_smooth,
+                                                                categories)
+                    preds_smooth_list = separate_list_by_worm(
+                        preds_smooth, df_test_scaled)
+                
+                    ms_test_list = separate_list_by_worm(
+                        ms_test, df_test_scaled)
+                
+                    NRs[sm,t,mt,sg,2] = nict_met.nictation_ratio(
+                        preds_smooth_list, False)
+                    IRs[sm,t,mt,sg,2] = nict_met.initiation_rate(
+                        preds_smooth_list, False)
+                    SRs[sm,t,mt,sg,2] = nict_met.stopping_rate(
+                        preds_smooth_list, False)
+                    accs[sm,t,mt,sg,2] = compare_scores_list(
+                        man_scores_test_vid, preds_smooth_list)
+               
+                
+                # training and inference times do not include the smoothing
+                # time, which is basically negligable
+                times[sm,t,mt,0] = train_time
+                times[sm,t,mt,1] = infr_time
+
+               
+    
+    return accs, times, NRs, IRs, SRs, man_metrics
+    
                 # heatmap_acc[mt,2*sm:2*sm+2] = [train_acc,test_acc]
 
     # # initialize heatmap for accuracy
@@ -578,7 +894,7 @@ def train_model(manual_score_file,feature_file,fps,scaling_method,model_type):
     df.insert(2,'manual_behavior_label',man_scores)
     
     # remove NaN values
-    df_masked = nan_inf_mask_dataframe(df)
+    df_masked, ix = nan_inf_mask_dataframe(df)
     
     # specifiy machine learning parameters 
     scaling_method = 'Gaussian'
@@ -846,11 +1162,15 @@ def nan_inf_mask_dataframe(dataframe):
     '''Removes all -np.inf, np.inf, and np.nan values from dataframe and 
     resets the indices'''
     
-    df_masked = copy.deepcopy(dataframe)
-    df_masked.replace([np.inf, -np.inf], np.nan, inplace=True)
-    df_masked = df_masked.dropna().reset_index(drop=True)
+    df = copy.deepcopy(dataframe).reset_index(drop=True)
+    df.replace([np.inf, -np.inf], np.nan, inplace=True)
     
-    return df_masked
+    # also return indices of removed rows
+    inds = list(df[df.isna().any(axis=1)].index)
+    
+    df = df.dropna().reset_index(drop=True)
+    
+    return df, inds
     
 
 
