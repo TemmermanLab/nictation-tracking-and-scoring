@@ -173,6 +173,9 @@ def combine_and_prepare_man_scores_and_features(vid_file, score_file = None,
     # remove NaN values
     df_masked, ix = nan_inf_mask_dataframe(df)
     
+    # remove unfixed centerlines
+    
+    
     return df_masked, ix
 
 
@@ -426,37 +429,12 @@ def evaluate_models_x_fold_cross_val(vid_file_train, vid_file_test,
                     ix_cen_adj.append(i+offset)
         return np.sort(np.unique(np.array(ix_cen_prime+ix_cen_adj)))
     
-    
-    
-    
-    def find_unfixed_centerline_inds(df,flgs):
-        '''finds indices of centerlines still flagged after fixing and nearby
-        frames close enough to affect feature values'''
-        df = df.reset_index(drop = True)
-        ix_prime = list(np.where(flgs==3)[0])
-        ix_adj = []
-        for i in ix_prime:
-            for offset in [-2,-1,1,2]:
-                if i+offset > 0 and i+offset < len(df) and \
-                    df.iloc[i]['worm'] == df.iloc[i+offset]['worm']:
-                    ix_adj.append(i+offset)
-        return np.sort(np.unique(np.array(ix_prime+ix_adj)))
-                
+               
     
     # remove flagged centerline frames and frames in close proximity
     # 0: never flagged, 1: flagged and not fixed, 2: flagged and fixed, 
     # 3: flagged and fixed but still meets flagging criteria. remove 1 and 3
-    def prepare_centerline_flags(vid_file, ix):
-        '''Loads centerline flags, linearizes them, and removes flags with the
-        indices ix'''
-        clns, cln_flags = dmm.load_centerlines_csv(
-            os.path.splitext(vid_file)[0] + \
-                r'_tracking\centerlines')
-        cln_flags_linear = []
-        for i in range(len(cln_flags)):
-            cln_flags_linear = cln_flags_linear + cln_flags[i] 
-        cln_flags_linear = np.array(cln_flags_linear)
-        return np.delete(cln_flags_linear,ix,0)
+    
 
     
     # removal of worm frames with or nearby censored frames and flagged
@@ -670,37 +648,31 @@ def evaluate_models_x_fold_cross_val(vid_file_train, vid_file_test,
     
     return accs, times, NRs, IRs, SRs, man_metrics
     
-                # heatmap_acc[mt,2*sm:2*sm+2] = [train_acc,test_acc]
+    
+def find_unfixed_centerline_inds(df,flgs):
+    '''finds indices of centerlines still flagged after fixing and nearby
+    frames close enough to affect feature values'''
+    df = df.reset_index(drop = True)
+    ix_prime = list(np.where(flgs==3)[0])
+    ix_adj = []
+    for i in ix_prime:
+        for offset in [-2,-1,1,2]:
+            if i+offset > 0 and i+offset < len(df) and \
+                df.iloc[i]['worm'] == df.iloc[i+offset]['worm']:
+                ix_adj.append(i+offset)
+    return np.sort(np.unique(np.array(ix_prime+ix_adj)))
 
-    # # initialize heatmap for accuracy
-    # heatmap_acc = np.empty((len(model_types),10))
-    # # accuracy heat map figure
-    # fig, axes = plt.subplots()
-    # im = axes.imshow(heatmap_acc,cmap='viridis', vmin = 0.67, vmax = 1.00)
-    # #im = axes.imshow(heatmap_acc,cmap='viridis', vmin = 0.00, vmax = 1.00)
-    # plt.title('Model Performance with Scaled Features')
-    # axes.xaxis.set_label_position('top')
-    # axes.xaxis.tick_top() 
-    # axes.set_xticks([0,1,2,3,4,5,6,7,8,9])
-    # axes.set_xticklabels(['train','test','train','test','train','test',
-    #                       'train','test','train','test'])
-    # axes.set_yticks(np.arange(len(model_types)))
-    # axes.set_yticklabels(model_types)
-    # axes.set_xlabel(
-    #     '   none      min-max     variance   Gaussian   whitening ')
-    # plt.setp(axes.get_xticklabels(),rotation = 0, ha = 'center', 
-    #          rotation_mode = 'anchor')
-    
-    # for i in range(10):
-    #     for j in range(len(model_types)):
-    #         text = axes.text(i,j,"%0.2f" % heatmap_acc[j,i],ha='center',
-    #                          va='center',fontweight = 'bold')
-    
-    # plt.savefig(os.path.splitext(vid_file)[0] + \
-    #             r'_tracking/nict_scoring_model_accuracy.png', dpi = 200)
-    
-    # plt.show()
-
+def prepare_centerline_flags(vid_file, ix):
+        '''Loads centerline flags, linearizes them, and removes flags with the
+        indices ix'''
+        clns, cln_flags = dmm.load_centerlines_csv(
+            os.path.splitext(vid_file)[0] + \
+                r'_tracking\centerlines')
+        cln_flags_linear = []
+        for i in range(len(cln_flags)):
+            cln_flags_linear = cln_flags_linear + cln_flags[i] 
+        cln_flags_linear = np.array(cln_flags_linear)
+        return np.delete(cln_flags_linear,ix,0)
 
 
 
@@ -1213,22 +1185,22 @@ def learn_and_predict(X_train, X_val, y_train, y_val,
                       model_type = 'random forest', print_acc = False):
     
     if model_type == 'logistic regression':
-        model = LogisticRegression(max_iter = 1000)
+        model = LogisticRegression(max_iter = 1000, random_state = 0)
     elif model_type == 'decision tree':
-        model = DecisionTreeClassifier()
+        model = DecisionTreeClassifier(random_state = 0)
     elif model_type == 'k nearest neighbors':
-        model = KNeighborsClassifier()
+        model = KNeighborsClassifier(random_state = 0)
     elif model_type == 'linear discriminant analysis':
-        model = LinearDiscriminantAnalysis()
+        model = LinearDiscriminantAnalysis(random_state = 0)
     elif model_type == 'Gaussian naive Bayes':
-        model = GaussianNB()
+        model = GaussianNB(random_state = 0)
     elif model_type == 'support vector machine':
-        model = SVC(probability = True)
+        model = SVC(probability = True,random_state = 0)
         #print('WARNING: SVM probabilities may not correspond to scores.')
     elif model_type == 'random forest':
         model = RandomForestClassifier(max_features='sqrt', random_state = 0)
     elif model_type == 'neural network':
-        model = MLPClassifier()
+        model = MLPClassifier(random_state = 0)
     else:
         print('WARNING: model type "'+model_type+'" not recognized!')
     
