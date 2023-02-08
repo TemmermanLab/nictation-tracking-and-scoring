@@ -202,6 +202,31 @@ def remove_censored_frames(df):
     # df = df.reset_index()
     # df = df.drop(columns = 'level_0')
     return df.reset_index().drop(columns = ['index','level_0'])
+
+
+def remove_unfixed_centerlines(df,):
+    '''Removes from the dataframe rows in which the centerline was flagged but
+    not successfully fixed, frames one or two frames away, provided they are
+    part of the same worm track. In the future, it could also remove 
+    disconnected parts of tracks that are left behind'''
+    
+    df = df.reset_index()
+   
+    i_del = []
+    for f in range(len(df)):
+        if df['manual_behavior_label'][f] == -1:
+            i_del.append(f)
+            
+            w = df['worm'][f]
+            for offset in [-2,-1,1,2]:
+                if f+offset >=0 and f+offset < len(df):
+                    if df['worm'][f+offset] == w and f+offset not in i_del:
+                        i_del.append(f+offset)
+    
+    df = df.drop(index=i_del)
+    # df = df.reset_index()
+    # df = df.drop(columns = 'level_0')
+    return df.reset_index().drop(columns = ['index','level_0'])
     
 
 def evaluate_models_accuracy_2(vid_file_train, vid_file_test, **kwargs):
@@ -415,19 +440,6 @@ def evaluate_models_x_fold_cross_val(vid_file_train, vid_file_test,
     
     # add censored frames and frames from the same worm in close proximity to
     # the list
-    def find_censored_inds(df):
-        '''finds indices of censored and nearby frames close enough to affect
-        feature values'''
-        df = df.reset_index(drop = True)
-        ix_cen_prime = df.index[
-            df['manual_behavior_label'] == -1].tolist()
-        ix_cen_adj = []
-        for i in ix_cen_prime:
-            for offset in [-2,-1,1,2]:
-                if i+offset > 0 and i+offset < len(df) and \
-                    df.iloc[i]['worm'] == df.iloc[i+offset]['worm']:
-                    ix_cen_adj.append(i+offset)
-        return np.sort(np.unique(np.array(ix_cen_prime+ix_cen_adj)))
     
                
     
@@ -649,6 +661,22 @@ def evaluate_models_x_fold_cross_val(vid_file_train, vid_file_test,
     return accs, times, NRs, IRs, SRs, man_metrics
     
     
+
+def find_censored_inds(df):
+        '''finds indices of censored and nearby frames close enough to affect
+        feature values'''
+        df = df.reset_index(drop = True)
+        ix_cen_prime = df.index[
+            df['manual_behavior_label'] == -1].tolist()
+        ix_cen_adj = []
+        for i in ix_cen_prime:
+            for offset in [-2,-1,1,2]:
+                if i+offset > 0 and i+offset < len(df) and \
+                    df.iloc[i]['worm'] == df.iloc[i+offset]['worm']:
+                    ix_cen_adj.append(i+offset)
+        return np.sort(np.unique(np.array(ix_cen_prime+ix_cen_adj)))
+    
+
 def find_unfixed_centerline_inds(df,flgs):
     '''finds indices of centerlines still flagged after fixing and nearby
     frames close enough to affect feature values'''
