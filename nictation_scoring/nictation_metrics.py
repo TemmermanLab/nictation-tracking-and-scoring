@@ -18,7 +18,9 @@ In methods: "To exclude dauers in quiescence, nictation was only evaluated
 
 Additionally, because average duration is likely to be scewed due to longer
 bouts being but off by tracking failures, a "stopping rate" is also 
-calculated.
+calculated, and because it is difficult to optimize both initiation index and 
+stopping rate when there the nictation ratio is not accurate, an overall
+"transition rate" is also calculated.
 
 Issues and improvements:
     
@@ -154,6 +156,44 @@ def stopping_rate(scores, only_active = True, fps = 5, binary = True):
     
     return SR
 
+
+
+def transition_rate(scores, only_active = True, fps = 5, binary = True):
+    '''takes a list of nictation behavior scores and finds the number of 
+    transitions from nictating to not nictating or vice versa divided by the
+    total time in either behavior (i.e. not censored). If <only_active> is 
+    true, only transitions from waving to crawling and vice versa are counted,
+    and only crawling and waving are counted toward total time''' 
+    
+    if not binary:
+        trans_mat = np.zeros((5,5))
+        for wt in range(len(scores)):
+            for f in range(len(scores[wt])-1):
+                trans_mat[int(scores[wt][f]+1),int(scores[wt][f+1]+1)] += 1
+        
+        if only_active:
+            num = trans_mat[3,2]+trans_mat[2,3]
+            denom = np.sum(trans_mat[2,:])+np.sum(trans_mat[3,:])
+            
+        else:
+            num = trans_mat[1,3]+trans_mat[1,4]+trans_mat[2,3]+\
+                trans_mat[2,4]+trans_mat[3,2]+trans_mat[4,2]+trans_mat[3,1]+\
+                trans_mat[4,1]
+            denom = np.sum(trans_mat[1:5,:])
+    else:
+        trans_mat = np.zeros((3,3))
+        for wt in range(len(scores)):
+            for f in range(len(scores[wt])-1):
+                trans_mat[int(scores[wt][f]+1),int(scores[wt][f+1]+1)] += 1
+        num = trans_mat[2,1]+trans_mat[1,2]
+        denom = np.sum(trans_mat[1,:])+np.sum(trans_mat[2,:])
+        
+    if denom != 0:
+        TR = fps * (num / denom)
+    else:
+        TR = np.nan
+    
+    return TR
 
 
 def nictation_duration(scores, exclude_partial_episodes = False, 
