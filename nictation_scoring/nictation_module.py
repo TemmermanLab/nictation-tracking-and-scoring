@@ -730,8 +730,8 @@ def compare_scores_list(man_scores, comp_scores):
     same = 0
     for wt in range(len(man_scores)):
         total += len(comp_scores[wt])
-        comp_scores[wt] = comp_scores[wt].astype(np.int16)
-        man_scores[wt] = man_scores[wt].astype(np.int16)
+        comp_scores[wt] = np.array(comp_scores[wt]).astype(np.int16)
+        man_scores[wt] = np.array(man_scores[wt]).astype(np.int16)
         same += np.sum(comp_scores[wt]==man_scores[wt])
     return same / total
     
@@ -992,6 +992,25 @@ def probabilities_to_predictions(probs, categories):
 
     return preds#np.int8(preds)
 
+def probabilities_to_predictions_w(probs, categories):
+    '''This version will replace the version above, it assumes that the 
+    probabilities are a list of lists or arrays with each sub list 
+    corresponding to a worm track'''
+    
+    preds_all = []
+    
+    for w in range(len(probs)):
+        pred_nums = list()
+        
+        for f in probs[w]: pred_nums.append(np.argmax(f,axis = -1))
+        
+        preds = list()
+        
+        for i in pred_nums: preds.append(categories[i])
+
+        preds_all.append(preds)
+    
+    return preds_all#np.int8(preds)
     
 
 def calculate_metafeatures(df,fps):
