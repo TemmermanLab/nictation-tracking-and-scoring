@@ -103,7 +103,7 @@ def evaluate_models_accuracy(vid_file, **kwargs):
     df.insert(2,'manual_behavior_label',man_scores)
 
     # remove NaN values
-    df_masked = nan_inf_mask_dataframe(df)
+    df_masked = nan_inf_mask_dataframe(df)[0]
     
     # plot the abundance of worm-frames with each behavior label
     nict_plot.bar_count(df_masked)
@@ -1408,7 +1408,7 @@ def score_behavior(feature_file, behavior_model_file, behavior_sig, fps,
     
     # load features
     df = pd.read_csv(feature_file)
-    df_masked = nan_inf_mask_dataframe(df)
+    df_masked = nan_inf_mask_dataframe(df)[0]
     dfi =  df.columns.get_loc('activity')
     cols = df.columns[dfi:]
     df_scaled = scale_scoring_features(df_masked, scaler, cols)
