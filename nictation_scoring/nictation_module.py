@@ -68,81 +68,6 @@ import tracker as trkr
 import data_management_module as dmm
 
 
-def evaluate_models_accuracy(vid_file, **kwargs):
-    '''Trains and tests several types of machine learning algorithms based on
-    the features calculated from and manual scores provided for <vid_file>
-    split 75 / 25 training / testing.  The resulting accuracies of the 
-    different models with different types of feature normalization are 
-    returned as well as the training and inference times.'''   
-    
-    trials = kwargs.get('trials',1)
-    
-    model_types = kwargs.get('model_types',['logistic regression',
-        'decision tree', 'k nearest neighbors',
-        'linear discriminant analysis', 'Gaussian naive Bayes', 
-        'support vector machine', 'random forest', 'neural network'])
-    
-    scaling_methods = kwargs.get('scaling_methods',['none','min max',
-                        'variance','Gaussian','whiten'])
-    
-    rand_split = kwargs.get('rand_split',False)
-    
-    # load manual scores
-    man_scores_lst = load_manual_scores_csv(
-        os.path.splitext(vid_file)[0] + \
-        r'_tracking/manual_nictation_scores.csv')
-    
-    # load features
-    df = pd.read_csv(os.path.splitext(vid_file)[0] + 
-                      r'_tracking\nictation_features.csv')
-    
-    # add manual scores to df
-    man_scores = []
-    for scr_w in man_scores_lst:
-        man_scores += list(scr_w)
-    df.insert(2,'manual_behavior_label',man_scores)
-
-    # remove NaN values
-    df_masked = nan_inf_mask_dataframe(df)[0]
-    
-    # plot the abundance of worm-frames with each behavior label
-    nict_plot.bar_count(df_masked)
-    
-    acc = np.empty((len(scaling_methods),trials,len(model_types),2))
-    times = copy.copy(acc)
-    
-    for sm in range(len(scaling_methods)):
-        if scaling_methods[sm] != 'none':
-            df_scaled, scaler = scale_training_features(df_masked, method,
-                                                        df_masked.columns[3:])
-        else:
-            df_scaled = copy.deepcopy(df_masked)
-        
-        for t in range(trials):
-            x_train, x_test, y_train, y_test, wi_train, worminf_test = split(
-                df_scaled, 0.75, rand_split)
-            
-            for mt in range(len(model_types)):
-                print(model_types[mt])
-                
-                t0 = time.time()
-                mod, train_acc, test_acc, probs, preds = learn_and_predict(
-                    x_train, x_test, y_train, y_test, model_types[mt])
-                train_time = time.time()-t0
-                
-                t0 = time.time()
-                predictions = mod.predict(x_test) 
-                infr_time = time.time()-t0
-                
-                acc[sm,t,mt,0] = train_acc; acc[sm,t,mt,1] = test_acc;
-                times[sm,t,mt,0] = train_time
-                times[sm,t,mt,1] = infr_time
-                
-    
-    return acc, times
-                # heatmap_acc[mt,2*sm:2*sm+2] = [train_acc,test_acc]
-
-
 def combine_and_prepare_man_scores_and_features(vid_file, score_file = None, 
                                         simplify = True, alt_feat = False):
     '''Loads manual scores and features from the same video and combines and
@@ -229,165 +154,6 @@ def remove_unfixed_centerlines(df,):
     return df.reset_index().drop(columns = ['index','level_0'])
     
 
-def evaluate_models_accuracy_2(vid_file_train, vid_file_test, **kwargs):
-    '''Same as evaluate_models_accuracy except that accuracy is also evaluated
-    on a totally separate video as a test of the robustness of the classifier.
-    "evaluate_models_accuracy" trains and tests several types of machine
-    learning algorithms based on the features calculated from and manual 
-    scores provided for <vid_file> split 75 / 25 training / testing.  The
-    resulting accuracies of the different models with different types of 
-    feature normalization are returned as well as the training and inference
-    times.'''   
-    
-    trials = kwargs.get('trials',1)
-    
-    model_types = kwargs.get('model_types',['logistic regression',
-        'decision tree', 'k nearest neighbors',
-        'linear discriminant analysis', 'Gaussian naive Bayes',
-        'support vector machine', 'random forest', 'neural network'])
-    
-    scaling_methods = kwargs.get('scaling_methods',['none','min max',
-                        'variance','Gaussian','whiten'])
-    
-    rand_split = kwargs.get('rand_split',False)
-    
-    sigmas = kwargs.get('sigmas', np.arange(0,1.5,0.1))
-    
-    fps = kwargs.get('fps', 5)
-    
-    only_active = kwargs.get('only_active', False)
-    
-    
-    # load features and manual scores for the training and test videos
-    df_train = combine_and_prepare_man_scores_and_features(vid_file_train)
-    df_test = combine_and_prepare_man_scores_and_features(vid_file_test)
-    man_scores_test_vid = separate_list_by_worm(
-        df_test['manual_behavior_label'], df_test)
-    
-    # # plot the abundance of worm-frames with each behavior label
-    # nict_plot.bar_count(df_train)
-    
-    accs = np.empty((len(scaling_methods),trials,len(model_types),len(sigmas)
-                    ,3))
-    times = np.empty((len(scaling_methods),trials,len(model_types),2))
-    NRs = copy.copy(accs)
-    IRs = copy.copy(accs)
-    SRs = copy.copy(accs)
-    
-    for sm in range(len(scaling_methods)):
-        if scaling_methods[sm] != 'none':
-            df_train_scaled, scaler = scale_training_features(df_train, 
-                                    scaling_methods[sm], df_train.columns[3:])
-            
-            cols = df_test.columns[3:]
-            df_test_scaled = copy.deepcopy(df_test)
-            df_test_scaled[cols] = scaler.transform(df_test[cols])
-            
-        else:
-            df_train_scaled = copy.deepcopy(df_train)
-            df_test_scaled = copy.deepcopy(df_test)
-        
-        for t in range(trials):
-            x_train, x_test, y_train, y_test, wi_train, wi_test = split(
-                df_train_scaled, 0.75, rand_split)
-            man_scores_train_train = separate_list_by_worm(y_train, wi_train)
-            man_scores_train_test = separate_list_by_worm(y_test, wi_test)
-            
-            for mt in range(len(model_types)):
-                print(model_types[mt])
-                
-                # train on training video and record training and test 
-                # accuracy on this video and elapsed time
-                t0 = time.time()
-                categories = np.unique(y_train) # sometimes a label is not
-                # represented in the training set
-                mod, train_acc, train_test_acc, probs, preds = \
-                    learn_and_predict(x_train, x_test, y_train, y_test,
-                                      model_types[mt])
-                train_time = time.time()-t0
-                
-                
-                # make probability infrerence on the training and test 
-                # portions of the training video to be used below
-                probs_train_train = mod.predict_proba(x_train)
-                probs_train_test = mod.predict_proba(x_test)
-                
-                # use the same model to make inferences on another video and
-                # record the elapsed time and accuracy
-                t0 = time.time()
-                probs_test_vid = mod.predict_proba(
-                    df_test_scaled[df_test_scaled.columns[3:]])
-                infr_time = time.time()-t0
-                
-                # cycle through smoothing sigmas
-                for sg in range(len(sigmas)):
-                    
-                    # smooth and inferences and calculate nictation metrics on
-                    # the training set of the training video
-                    probs_smooth = smooth_probabilities(
-                        probs_train_train, sigmas[sg], fps)
-                    preds_smooth = probabilities_to_predictions(probs_smooth,
-                                                                categories)
-                    preds_smooth_list = separate_list_by_worm(
-                        preds_smooth, wi_train)
-                
-                    NRs[sm,t,mt,sg,0] = nict_met.nictation_ratio(
-                        preds_smooth_list, only_active)
-                    IRs[sm,t,mt,sg,0] = nict_met.initiation_rate(
-                        preds_smooth_list, only_active)
-                    SRs[sm,t,mt,sg,0] = nict_met.stopping_rate(
-                        preds_smooth_list, only_active)
-                    accs[sm,t,mt,sg,0] = compare_scores_list(
-                        man_scores_train_train,preds_smooth_list)
-                    
-                    
-                    # smooth and inferences and calculate nictation metrics on
-                    # the test set of the training video
-                    probs_smooth = smooth_probabilities(
-                        probs_train_test, sigmas[sg], fps)
-                    preds_smooth = probabilities_to_predictions(probs_smooth,
-                                                                categories)
-                    preds_smooth_list = separate_list_by_worm(
-                        preds_smooth, wi_test)
-                
-                    NRs[sm,t,mt,sg,1] = nict_met.nictation_ratio(
-                        preds_smooth_list, only_active)
-                    IRs[sm,t,mt,sg,1] = nict_met.initiation_rate(
-                        preds_smooth_list, only_active)
-                    SRs[sm,t,mt,sg,1] = nict_met.stopping_rate(
-                        preds_smooth_list, only_active)
-                    accs[sm,t,mt,sg,1] = compare_scores_list(
-                        man_scores_train_test, preds_smooth_list)
-                    
-                    
-                    # smooth and inferences and calculate nictation metrics on
-                    # the separate test video
-                    probs_smooth = smooth_probabilities(
-                        probs_test_vid, sigmas[sg], fps)
-                    preds_smooth = probabilities_to_predictions(probs_smooth,
-                                                                categories)
-                    preds_smooth_list = separate_list_by_worm(
-                        preds_smooth, df_test_scaled)
-                
-                    NRs[sm,t,mt,sg,2] = nict_met.nictation_ratio(
-                        preds_smooth_list, only_active)
-                    IRs[sm,t,mt,sg,2] = nict_met.initiation_rate(
-                        preds_smooth_list, only_active)
-                    SRs[sm,t,mt,sg,2] = nict_met.stopping_rate(
-                        preds_smooth_list, only_active)
-                    accs[sm,t,mt,sg,2] = compare_scores_list(
-                        man_scores_test_vid, preds_smooth_list)
-               
-                
-                # training and inference times do not include the smoothing
-                # time, which is basically negligable
-                times[sm,t,mt,0] = train_time
-                times[sm,t,mt,1] = infr_time
-                
-    
-    return accs, times, NRs, IRs, SRs
-
-
 @ignore_warnings(category=ConvergenceWarning)
 def evaluate_models_x_fold_cross_val(vid_file_train, vid_file_test, 
                                      **kwargs):
@@ -413,7 +179,9 @@ def evaluate_models_x_fold_cross_val(vid_file_train, vid_file_test,
     
     fps = kwargs.get('fps', 5)
         
-    
+    # if a save file is provided, information from that file is loaded and
+    # progress
+    save_file = kwargs.get('save_file', None)
     
     # load features and manual scores for the training and test videos
     df_train, i_naninf_train = combine_and_prepare_man_scores_and_features(vid_file_train)
@@ -441,8 +209,7 @@ def evaluate_models_x_fold_cross_val(vid_file_train, vid_file_test,
     # add censored frames and frames from the same worm in close proximity to
     # the list
     
-               
-    
+
     # remove flagged centerline frames and frames in close proximity
     # 0: never flagged, 1: flagged and not fixed, 2: flagged and fixed, 
     # 3: flagged and fixed but still meets flagging criteria. remove 1 and 3
@@ -495,9 +262,18 @@ def evaluate_models_x_fold_cross_val(vid_file_train, vid_file_test,
         "IR_train": nict_met.initiation_rate(man_scores_train_vid , False),
         "TR_train": nict_met.stopping_rate(man_scores_train_vid , False)
         }
-        
+
+    # before starting, try loading and see if any progress as been made
+    if save_file is not None and os.path.isfile(save_file):
+        with open(save_file, 'rb') as f:     
+            model_types, scaling_methods, sigmas, accs, times, NRs, IRs,\
+                SRs, man_metrics, scaling_progress = pickle.load(f)
+    else:
+        scaling_progress = 0
+
     # begin x-fold cross validation loop
-    for sm in range(len(scaling_methods)):
+    for sm in range(scaling_progress,len(scaling_methods)):
+        
         print('On scaling method '+str(sm+1)+' of '+str(len(scaling_methods)))
         if scaling_methods[sm] != 'none':
             df_train_scaled, scaler = scale_training_features(df_train, 
@@ -656,7 +432,13 @@ def evaluate_models_x_fold_cross_val(vid_file_train, vid_file_test,
                 times[sm,t,mt,0] = train_time
                 times[sm,t,mt,1] = infr_time
 
-               
+        scaling_progress = sm+1
+        if save_file is not None:
+            with open(save_file, 'wb') as f:
+                pickle.dump([model_types, scaling_methods, sigmas, accs, 
+                             times, NRs, IRs, SRs, man_metrics, 
+                             scaling_progress], f)   
+          
     
     return accs, times, NRs, IRs, SRs, man_metrics
     
@@ -1236,16 +1018,29 @@ def learn_and_predict(X_train, X_val, y_train, y_val,
     elif model_type == 'decision tree':
         model = DecisionTreeClassifier(random_state = 0)
     elif model_type == 'k nearest neighbors':
-        model = KNeighborsClassifier(random_state = 0)
+        model = KNeighborsClassifier()
     elif model_type == 'linear discriminant analysis':
-        model = LinearDiscriminantAnalysis(random_state = 0)
+        model = LinearDiscriminantAnalysis()
     elif model_type == 'Gaussian naive Bayes':
-        model = GaussianNB(random_state = 0)
+        try:
+            model = GaussianNB(random_state = 0)
+        except:
+            model = GaussianNB()
+            print('GNB has no random_state')
     elif model_type == 'support vector machine':
-        model = SVC(probability = True,random_state = 0)
+        try:
+            model = SVC(probability = True,random_state = 0)
+        except:
+            model = SVC(probability = True)
+            print('SVC has no random_state')
         #print('WARNING: SVM probabilities may not correspond to scores.')
     elif model_type == 'random forest':
-        model = RandomForestClassifier(max_features='sqrt', random_state = 0)
+        try:
+            model = RandomForestClassifier(max_features='sqrt', random_state = 0)
+        except:
+            model = RandomForestClassifier(max_features='sqrt')
+            print('Random Forest has no random_state')
+
     elif model_type == 'neural network':
         model = MLPClassifier(random_state = 0)
     else:
