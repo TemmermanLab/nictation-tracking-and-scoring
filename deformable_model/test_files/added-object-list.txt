@@ -1,2 +1,0 @@
-# image name (\t) object index
-img.png	5
