@@ -127,13 +127,15 @@ def nictation_scoring_GUI(vignette_path = 'null'):
 
     
     def save_scores_csv():
+        nonlocal vignette_list
+        
         with open(save_file_csv, mode='w',newline="") as csv_file:
             #pdb.set_trace()
             scores_writer = csv.writer(csv_file, delimiter=',', quotechar='"',
                                        quoting=csv.QUOTE_MINIMAL)
             # complicated because csv writer only writes rows
             row = []
-            for ww in range(len(scores)): row.append('worm '+str(ww))
+            for ww in range(len(scores)): row.append(vignette_list[ww][0:-4])
             scores_writer.writerow(row)
             
             num_frames = []
@@ -369,16 +371,16 @@ def nictation_scoring_GUI(vignette_path = 'null'):
     Button(nictation_GUI, text = "TOGGLE (S)", command = partial(toggle_score_button, False),
            width = button_width) .grid(row = 1, column = 1, padx=1, pady=1,
                              sticky = W+E+N+S)
-    Button(nictation_GUI, text = "< (Left)", command = step_backward_button,
+    Button(nictation_GUI, text = "< (←)", command = step_backward_button,
            width = button_width) .grid(row = 1, column = 2, padx=1, pady=1,
                              sticky = W+E+N+S)
-    Button(nictation_GUI, text = "> (Right)", command = step_forward_button,
+    Button(nictation_GUI, text = "> (→)", command = step_forward_button,
            width = button_width) .grid(row = 1, column = 3, padx=1, pady=1,
                              sticky = W+E+N+S)
-    Button(nictation_GUI, text = ">>> (Up)", command = fast_forward_button,
+    Button(nictation_GUI, text = ">>> (↑)", command = fast_forward_button,
            width = button_width) .grid(row = 1, column = 4, padx=1, pady=1, \
                              sticky = W+E+N+S)
-    Button(nictation_GUI, text = "|| (Down)", command = pause_button,width = 11) \
+    Button(nictation_GUI, text = "|| (↓)", command = pause_button,width = 11) \
         .grid(row = 1, column = 5, padx=1, pady=1, sticky = W+E+N+S)
     
     # buttons for switch videos, saving scores, etc
