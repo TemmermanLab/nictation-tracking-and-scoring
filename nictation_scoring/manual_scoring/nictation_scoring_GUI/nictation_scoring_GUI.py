@@ -10,16 +10,16 @@ Created on Tue Mar  2 13:44:15 2021
     5. Quiescent + Nictating (3)
 
 # issues and improvements:
--make it so that indexing is consistent (right now the GUI shows worms as 1-
+-make it so that indexing is consistent (right now the GUI shows tracks as 1-
  indexed, but the spreadsheet is 0-indexed
--change spreadsheet headers to actual vignette names rather than 'worm_0' etc.
--add a button to rewind to beginning and re-score a worm
+-change spreadsheet headers to actual vignette names rather than 'track_0' etc.
+-add a button to rewind to beginning and re-score a track
 -might be easier with play / pause, step on either side, and separate speed 
  control
 -do not record a score if the video was never advanced (right now if you go 
- forward into the unscored worms and backward again, the first frame is given
+ forward into the unscored track and backward again, the first frame is given
  the -1 censored score)
--censor worm button
+-censor track button
 -auto-saving
 
 @author: PDMcClanahan
@@ -98,7 +98,7 @@ def nictation_scoring_GUI(vignette_path = 'null'):
         frame = cv2.putText(frame, 'frame '+str(f+1)+'/'+str(len(scores[w])),
                             tuple(text_origin_2), font, font_scale, (16,78,139),
                             text_thickness, cv2.LINE_AA)
-        frame = cv2.putText(frame, 'worm '+str(w+1)+'/'+str(len(scores)),
+        frame = cv2.putText(frame, 'track '+str(w+1)+'/'+str(len(scores)),
                             tuple(text_origin_3), font, font_scale, (16,78,139),
                             text_thickness, cv2.LINE_AA)
         frame = Image.fromarray(frame)
@@ -214,9 +214,9 @@ def nictation_scoring_GUI(vignette_path = 'null'):
         play()
 
         
-    def previous_worm_button():
+    def previous_track_button():
         nonlocal play_state, w, f, score
-        print('previous worm button pressed')
+        print('previous track button pressed')
         play_state = 0
         if w > 0:
             w = w - 1
@@ -225,8 +225,8 @@ def nictation_scoring_GUI(vignette_path = 'null'):
                 f = np.min(np.where(scores[w]==-2))
             else:
                 f = int(vign_num_f)-1
-                print('worm ' + str(w) + \
-                      ' already scored, re-score or switch worms')
+                print('track ' + str(w) + \
+                      ' already scored, re-score or switch tracks')
             
             score = scores[w][f]
             if score == -2:
@@ -235,10 +235,10 @@ def nictation_scoring_GUI(vignette_path = 'null'):
             update_still()
 
     
-    def next_worm_button():
+    def next_track_button():
         nonlocal play_state, w, f, score
         if w != -1:
-            print('next worm button pressed')
+            print('next track button pressed')
             if f == len(scores[w])-1:
                 update_scores() # save final score
         else:
@@ -255,8 +255,8 @@ def nictation_scoring_GUI(vignette_path = 'null'):
                 f = np.min(np.where(scores[w]==-2))
             else:
                 f = int(vign_num_f)-1
-                print('worm ' + str(w) + \
-                      ' already scored, re-score or switch worms')
+                print('track ' + str(w) + \
+                      ' already scored, re-score or switch tracks')
             
             score = scores[w][f]
             if score == -2:
@@ -283,7 +283,7 @@ def nictation_scoring_GUI(vignette_path = 'null'):
             root = tk.Tk()
             vignette_path = filedialog.askdirectory(initialdir = '/', \
                 title = "Select the folder containing video \
-                vignettes of individual tracked worms...")
+                vignettes of individual tracks...")
             root.destroy()
         
         print('loading video batch in '+vignette_path)
@@ -296,17 +296,20 @@ def nictation_scoring_GUI(vignette_path = 'null'):
                 vignette_list_unsorted[v][-4:] != '.avi':
                 del(vignette_list_unsorted[v])
         
-        # put in list in natural order
-        digit_list = []
-        for v in vignette_list_unsorted:
-            dig = ''
-            for c in v:
-                if c.isdigit():
-                    dig += c
-            digit_list.append(int(dig))
+        # # put in list in natural order
+        # digit_list = []
+        # for v in vignette_list_unsorted:
+        #     dig = ''
+        #     for c in v:
+        #         if c.isdigit():
+        #             dig += c
+        #     digit_list.append(int(dig))
         
-        vignette_list = [
-            x for _,x in sorted(zip(digit_list,vignette_list_unsorted))]
+        # vignette_list = [
+        #     x for _,x in sorted(zip(digit_list,vignette_list_unsorted))]
+        
+        vignette_list = sorted(vignette_list_unsorted)
+        
                 
         save_file_pickle = os.path.dirname(vignette_path) + \
             '\manual_nictation_scores.p'
@@ -384,10 +387,10 @@ def nictation_scoring_GUI(vignette_path = 'null'):
         .grid(row = 1, column = 5, padx=1, pady=1, sticky = W+E+N+S)
     
     # buttons for switch videos, saving scores, etc
-    Button(nictation_GUI, text = "PREVIOUS WORM (D)", 
-           command = previous_worm_button) .grid(row = 2, column = 0,
+    Button(nictation_GUI, text = "PREVIOUS TRACK (D)", 
+           command = previous_track_button) .grid(row = 2, column = 0,
            columnspan = 2, padx=1, pady=1, sticky = W+E+N+S)
-    Button(nictation_GUI, text = "NEXT WORM (F)", command = next_worm_button) \
+    Button(nictation_GUI, text = "NEXT TRACK (F)", command = next_track_button) \
         .grid(row = 2, column = 2, columnspan = 2, padx=1, pady=1,
               sticky = W+E+N+S)
     Button(nictation_GUI, text = "SAVE SCORES", 
@@ -406,9 +409,9 @@ def nictation_scoring_GUI(vignette_path = 'null'):
         elif event.char == 's':
             toggle_score_button()
         elif event.char == 'd':
-            previous_worm_button()
+            previous_track_button()
         elif event.char == 'f':
-            next_worm_button()
+            next_track_button()
         elif event.keysym == 'Left':
             step_backward_button()
         elif event.keysym == 'Right':
@@ -438,13 +441,12 @@ def nictation_scoring_GUI(vignette_path = 'null'):
     text_origin_3 = copy.copy(text_origin)
     text_origin_3[1] =  text_origin_3[1] + 2*line_spacing
     font_scale = 0.3
-    text_colors = [(50, 50, 50),(0, 0, 255),(0, 255, 0),(255, 125, 25),
-                   (255, 0, 0)]
+    text_colors = [(50, 50, 50),(0, 0, 255),(255, 0, 0)]
     text_thickness = 1
     
     # initialize variables
 
-    # find first unscored worm
+    # find first unscored track
     for w in range(len(scores)):
         if -2 in scores[w]:
             w = w-1
@@ -453,11 +455,10 @@ def nictation_scoring_GUI(vignette_path = 'null'):
     
     f = 0
     score = -1 
-    score_descriptions = ('censored', 'quiescent', 'crawling', 'waving', 
-                          'standing')
+    score_descriptions = ('censored', 'recumbent', 'nictating')
     play_state = 0 # reverse, pause, play, fast forward
     update_vign() # 
-    next_worm_button()
+    next_track_button()
     
     
     

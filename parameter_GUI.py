@@ -337,7 +337,7 @@ def parameter_GUI(trackers):
     enter_um_per_pix.insert(0,trackers[v].parameters['um_per_pix'])
     
     
-    Button(param_insp,text="mask R-CNN file (click to choose):", 
+    Button(param_insp,text="Mask R-CNN file (click to choose):", 
            command = choose_mrcnn_file_button, bg = "black", fg = "white") \
         .grid(row = 7, column = 0,padx=1, pady=1, sticky = W+E+N+S)
     enter_mrcnn_file = Entry(param_insp, bg = "white")
@@ -345,7 +345,7 @@ def parameter_GUI(trackers):
     enter_mrcnn_file.insert(0,trackers[v].parameters['mask_RCNN_file'])
     
     
-    Button(param_insp,text="behavior model file (click to choose):", 
+    Button(param_insp,text="Behavior model file (click to choose):", 
            command = choose_behavior_model_button, bg = "black", 
            fg = "white").grid(row = 7, column = 2,padx=1, pady=1,
            sticky = W+E+N+S)
