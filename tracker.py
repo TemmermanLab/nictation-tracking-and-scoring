@@ -146,13 +146,13 @@ class Tracker:
             'human_checked' : False,
             'bkgnd_meth' : 'max_merge',
             'bkgnd_nframes' : 10,
-            'k_sig' : 6.5, # um, default, close to original 1.5 pix
-            'bw_thr' : 10,
+            'k_sig' : 0, # um, default, close to original 1.5 pix
+            'bw_thr' : 100,
             'area_bnds' : (3700 , 16650), # sq um for C. elegans dauers
-            'd_thr' : 430, # um, based on 100 um
+            'd_thr' : 350, # um, based on 100 um
             'del_sz_thr' : '',
             'um_per_pix' : 4.3, # default based on data in C. elegans dataset
-            'min_f' : 300,
+            'min_f' : 50,
             'mask_RCNN_file' : os.path.split(__file__)[0] + \
                 r'\mask_RCNN\Celegans_mask_RCNN\20220331_full_frame_Ce_on_udirt_2.pt',
             'behavior_model_file' : os.path.split(__file__)[0] + \
@@ -293,10 +293,10 @@ class Tracker:
         font_factor = self.dimensions[1]/720
         f_face = cv2.FONT_HERSHEY_SIMPLEX
         f_scale = .5 * font_factor
-        f_thickness = round(2 * font_factor)
+        f_thickness = round(1 * font_factor)
         f_color = (0,0,0)
         linewidth = round(1 * font_factor)
-        linewidth_scale = round(2 * font_factor)
+        linewidth_scale = round(1 * font_factor)
         offset = round(70 * font_factor)
         
         # create 'final' image showing identified worms
@@ -340,7 +340,7 @@ class Tracker:
                                     f_color,f_thickness,cv2.LINE_AA)
             else:
                 final = cv2.putText(final,text,text_pos,f_face,f_scale,
-                                    (50,50,50),f_thickness,cv2.LINE_AA)
+                                    (75,75,75),f_thickness,cv2.LINE_AA)
      
         # show the distance threshold
         if self.parameters['d_thr'] is not None:
@@ -352,7 +352,7 @@ class Tracker:
             pt2 = [pt1[0]-d_thr,pt1[1]]
             text_pos = np.array((((pt1[0]+pt2[0])/2,pt1[1])),dtype='uint16')
             text_pos[0] = text_pos[0] - text_size[0]/2 # x centering 
-            text_pos[1] = text_pos[1] - 5 # y offset
+            text_pos[1] = text_pos[1] - 7 # y offset
             final = cv2.polylines(final, np.array([[pt1,pt2]]), True, 
                                  (0,0,255), linewidth)
             final = cv2.putText(final,text,tuple(text_pos),f_face,f_scale,

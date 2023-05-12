@@ -188,6 +188,7 @@ def parameter_GUI(trackers):
                 t.parameters['min_f'] = int(enter_min_f.get())
                 t.parameters['bw_thr'] = int(enter_bw_thr.get())
                 t.parameters['d_thr'] = int(enter_d_thr.get())
+                t.parameters['behavior_sig'] = int(enter_beh_sig.get())
                 t.parameters['area_bnds'] = (int(enter_min_sz.get()),
                                              int(enter_max_sz.get()))
             except:
@@ -231,7 +232,7 @@ def parameter_GUI(trackers):
         
     # set up GUI
     param_insp = tk.Toplevel()
-    param_insp.title('Tracking Parameter Inspection GUI')
+    param_insp.title('Parameter GUI')
     param_insp.configure(background = "black")
     
     # set up video window
@@ -258,100 +259,107 @@ def parameter_GUI(trackers):
     
     
     Label (param_insp,text="Background method (max_merge or min_merge):", 
-           bg = "black", fg = "white") .grid(row = 2, column = 0,padx=1,
+           bg = "black", fg = "white") .grid(row = 7, column = 0,padx=1,
                                              pady=1, sticky = W+E+N+S)
     enter_bkgnd_meth = Entry(param_insp, bg = "white")
-    enter_bkgnd_meth.grid(row = 2, column = 1,padx=1, pady=1, sticky = W+E)
+    enter_bkgnd_meth.grid(row = 7, column = 1,padx=1, pady=1, sticky = W+E)
     enter_bkgnd_meth.insert(0,trackers[v].parameters['bkgnd_meth'])
     
     
     Label (param_insp,text="Number of frames in background (integer):", 
-           bg = "black", fg = "white") .grid(row = 2, column = 2,padx=1,
+           bg = "black", fg = "white") .grid(row = 7, column = 2,padx=1,
                                              pady=1, sticky = W+E+N+S)
     enter_bkgnd_nframes = Entry(param_insp, bg = "white")
-    enter_bkgnd_nframes.grid(row = 2, column = 3,padx=1, pady=1, sticky = W+E)
+    enter_bkgnd_nframes.grid(row = 7, column = 3,padx=1, pady=1, sticky = W+E)
     enter_bkgnd_nframes.insert(0,trackers[v].parameters['bkgnd_nframes'])
     
     
-    Label (param_insp,text="Smoothing sigma (\u03bcm):", bg = "black", 
-           fg = "white").grid(row = 3, column = 0,padx=1, pady=1,
+    Label (param_insp,text="Smoothing \u03C3 (\u03bcm):", bg = "black", 
+           fg = "white").grid(row = 6, column = 0,padx=1, pady=1,
            sticky = W+E+N+S)
     enter_k_sig = Entry(param_insp, bg = "white")
-    enter_k_sig.grid(row = 3, column = 1,padx=1, pady=1, sticky = W+E)
+    enter_k_sig.grid(row = 6, column = 1,padx=1, pady=1, sticky = W+E)
     enter_k_sig.insert(0,str(trackers[v].parameters['k_sig']))
     
     
     Label (param_insp,text="Minimum frames in a track (integer):", 
-           bg = "black", fg = "white") .grid(row = 3, column = 2,padx=1, 
+           bg = "black", fg = "white") .grid(row = 5, column = 0,padx=1, 
                                              pady=1, sticky = W+E+N+S)
     enter_min_f = Entry(param_insp, bg = "white")
-    enter_min_f.grid(row = 3, column = 3,padx=2, pady=1, sticky = W+E)
+    enter_min_f.grid(row = 5, column = 1,padx=2, pady=1, sticky = W+E)
     enter_min_f.insert(0,trackers[v].parameters['min_f'])
     
     
     Label (param_insp,text="BW threshold (1-254):", bg = "black", 
-           fg = "white") .grid(row = 4, column = 0,padx=1, pady=1, 
+           fg = "white") .grid(row = 6, column = 2,padx=1, pady=1, 
                                sticky = W+E+N+S)
     enter_bw_thr = Entry(param_insp, bg = "white")
-    enter_bw_thr.grid(row = 4, column = 1,padx=1, pady=1, sticky = W+E)
+    enter_bw_thr.grid(row = 6, column = 3,padx=1, pady=1, sticky = W+E)
     enter_bw_thr.insert(0,trackers[v].parameters['bw_thr'])
     
     
     Label (param_insp,text="Distance threshold (\u03bcm):", bg = "black",
-        fg = "white").grid(row = 4, column = 2,padx=1, pady=1,
+        fg = "white").grid(row = 3, column = 2,padx=1, pady=1,
         sticky = W+E+N+S)
     enter_d_thr = Entry(param_insp, bg = "white")
-    enter_d_thr.grid(row = 4, column = 3,padx=1, pady=1, sticky = W+E)
+    enter_d_thr.grid(row = 3, column = 3,padx=1, pady=1, sticky = W+E)
     enter_d_thr.insert(0,trackers[v].parameters['d_thr'])
     
     
     Label (param_insp,text="Minimum area (\u03bcm\u00b2):", bg = "black", 
-           fg = "white") .grid(row = 5, column = 0,padx=1, pady=1, 
+           fg = "white") .grid(row = 4, column = 0,padx=1, pady=1, 
                                sticky = W+E+N+S)
     enter_min_sz = Entry(param_insp, bg = "white")
-    enter_min_sz.grid(row = 5, column = 1,padx=1, pady=1, sticky = W+E)
+    enter_min_sz.grid(row = 4, column = 1,padx=1, pady=1, sticky = W+E)
     enter_min_sz.insert(0,trackers[v].parameters['area_bnds'][0])
     
     
     Label (param_insp,text="Maximum area (\u03bcm\u00b2)", bg = "black", 
-           fg = "white") .grid(row = 5, column = 2,padx=1, pady=1,
+           fg = "white") .grid(row = 4, column = 2,padx=1, pady=1,
                                sticky = W+E+N+S)
     enter_max_sz = Entry(param_insp, bg = "white")
-    enter_max_sz.grid(row = 5, column = 3,padx=1, pady=1, sticky = W+E)
+    enter_max_sz.grid(row = 4, column = 3,padx=1, pady=1, sticky = W+E)
     enter_max_sz.insert(0,trackers[v].parameters['area_bnds'][1])
     
     
-    Label (param_insp,text="Size change threshold (%)", bg = "black",
-           fg = "white") .grid(row = 6, column = 0,padx=1, pady=1, 
+    # Label (param_insp,text="Size change threshold (%)", bg = "black",
+    #        fg = "white") .grid(row = 5, column = 2,padx=1, pady=1, 
+    #                            sticky = W+E+N+S)
+    # enter_del_sz_thr = Entry(param_insp, bg = "black")
+    # enter_del_sz_thr.grid(row = 5, column = 3,padx=1, pady=1, sticky = W+E)
+    # enter_del_sz_thr.insert(0,trackers[v].parameters['del_sz_thr'])
+    
+    Label (param_insp,text="Behavior \u03C3 (s)", bg = "black",
+           fg = "white") .grid(row = 5, column = 2,padx=1, pady=1, 
                                sticky = W+E+N+S)
-    enter_del_sz_thr = Entry(param_insp, bg = "black")
-    enter_del_sz_thr.grid(row = 6, column = 1,padx=1, pady=1, sticky = W+E)
-    #enter_del_sz_thr.insert(0,trackers[v].parameters['del_sz_thr'])
+    enter_beh_sig = Entry(param_insp, bg = "black")
+    enter_beh_sig.grid(row = 5, column = 3,padx=1, pady=1, sticky = W+E)
+    enter_beh_sig.insert(0,trackers[v].parameters['behavior_sig'])
     
     
     Button(param_insp,text="Scale (\u03bcm per pixel) (click for GUI)", 
            command = find_scale_button, bg = "black", fg = "white") \
-        .grid(row = 6, column = 2,padx=1, pady=1, sticky = W+E+N+S)
+        .grid(row = 3, column = 0,padx=1, pady=1, sticky = W+E+N+S)
     enter_um_per_pix = Entry(param_insp, bg = "white")
-    enter_um_per_pix.grid(row = 6, column = 3,padx=1, pady=1, sticky = W+E)
+    enter_um_per_pix.grid(row = 3, column = 1,padx=1, pady=1, sticky = W+E)
     enter_um_per_pix.insert(0,trackers[v].parameters['um_per_pix'])
     
     
     Button(param_insp,text="Mask R-CNN file (click to choose):", 
            command = choose_mrcnn_file_button, bg = "black", fg = "white") \
-        .grid(row = 7, column = 0,padx=1, pady=1, sticky = W+E+N+S)
+        .grid(row = 2, column = 0,padx=1, pady=1, sticky = W+E+N+S)
     enter_mrcnn_file = Entry(param_insp, bg = "white")
-    enter_mrcnn_file.grid(row = 7, column = 1,padx=1, pady=1, sticky = W+E)
+    enter_mrcnn_file.grid(row = 2, column = 1,padx=1, pady=1, sticky = W+E)
     enter_mrcnn_file.insert(0,trackers[v].parameters['mask_RCNN_file'])
     
     
     Button(param_insp,text="Behavior model file (click to choose):", 
            command = choose_behavior_model_button, bg = "black", 
-           fg = "white").grid(row = 7, column = 2,padx=1, pady=1,
+           fg = "white").grid(row = 2, column = 2,padx=1, pady=1,
            sticky = W+E+N+S)
     enter_behavior_model_file = Entry(param_insp, bg = "white")
     enter_behavior_model_file.grid(
-        row = 7, column = 3,padx=1, pady=1, sticky = W+E)
+        row = 2, column = 3,padx=1, pady=1, sticky = W+E)
     enter_behavior_model_file.insert(
         0,trackers[v].parameters['behavior_model_file'])
     
