@@ -301,7 +301,7 @@ def tracking_GUI():
     
     # GUI
     tracking_GUI = tk.Tk()
-    tracking_GUI.title('Tracking and Scoring GUI')
+    tracking_GUI.title('Main Analysis GUI')
     tracking_GUI.configure(background = "black")
     # get character size / line spacing in pixels
     chr_h_px = tkinter.font.Font(

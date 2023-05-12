@@ -382,31 +382,31 @@ def segmentation_GUI():
     tk.Button(segmentation_GUI,
               text = "UNDO BY NUMBER",
               command = undo_by_number_button,
-              width = 11) 
+              width = 11) \
               .grid(row = 2, column = 3, columnspan = 1, padx=1, pady=1,
                     sticky = 'W'+'E'+'N'+'S')
     tk.Button(segmentation_GUI,
               text = "LOAD IMAGES",
               command = load_images_button,
-              width = 11) 
+              width = 11) \
               .grid(row = 3, column = 0, padx=1, pady=1,
                     sticky = 'W'+'E'+'N'+'S')
     tk.Button(segmentation_GUI,
               text = "NEXT IMAGE",
               command = next_image_button,
-              width = 11) 
+              width = 11) \
               .grid(row = 3, column = 1, padx=1, pady=1,
                     sticky = 'W'+'E'+'N'+'S')
     tk.Button(segmentation_GUI,
               text = "BACK",
               command = back_button,
-              width = 11) 
+              width = 11) \
               .grid(row = 3, column = 2, padx=1, pady=1,
                     sticky = 'W'+'E'+'N'+'S')
     tk.Button(segmentation_GUI,
               text = "EXIT",
               command = exit_button,
-              width = 11) 
+              width = 11) \
                .grid(row = 3, column = 3, padx=1, pady=1,
                      sticky = 'W'+'E'+'N'+'S')
     
