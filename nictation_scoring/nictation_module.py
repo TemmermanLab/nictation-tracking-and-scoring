@@ -152,7 +152,64 @@ def remove_unfixed_centerlines(df,):
     # df = df.reset_index()
     # df = df.drop(columns = 'level_0')
     return df.reset_index().drop(columns = ['index','level_0'])
+
     
+def train_behavior_classifier(train_data_dir, scaling_method, algorithm):
+    '''Uses the manual scores and features in <train_data_dir>, scales the
+    features by <scaling_method>, and trains a classifier of type <algorithm>
+    on these training data, returning the trained model / classifier and 
+    scaler''' 
+    # for testing
+    # train_data_dir = r'C:\Users\PDMcClanahan\Desktop\test_behavior_training_set'
+    # scaling_method = 'whiten'
+    # algorithm = 'random forest'
+    
+    # load features
+    feature_file = train_data_dir + '//nictation_features.csv'
+    df = pd.read_csv(feature_file)
+    
+    # load manual scores    
+    manual_score_file =  train_data_dir + '//manual_nictation_scores.csv'
+    man_scores_lst = load_manual_scores_csv(manual_score_file, simplify = False)
+    man_scores = []
+    for scr_w in man_scores_lst:
+        man_scores += list(scr_w)
+    df.insert(2,'manual_behavior_label',man_scores)
+    
+    # remove NaN values
+    df_masked, ix = nan_inf_mask_dataframe(df)
+    
+
+    
+    # scale data
+    df_scaled, scaler = scale_training_features(df_masked, scaling_method,
+                                            df_masked.columns[5:])
+    
+    
+    # initialize model, note GNB has no random state option
+    if algorithm == 'logistic regression':
+        model = LogisticRegression(max_iter = 1000, random_state = 0)
+    elif algorithm == 'decision tree':
+        model = DecisionTreeClassifier(random_state = 0)
+    elif algorithm == 'k nearest neighbors':
+        model = KNeighborsClassifier()
+    elif algorithm == 'linear discriminant analysis':
+        model = LinearDiscriminantAnalysis()
+    elif algorithm == 'Gaussian naive Bayes':
+        model = GaussianNB()
+    elif algorithm == 'support vector machine':
+        model = SVC(probability = True,random_state = 0)
+    elif algorithm == 'random forest':
+        model = RandomForestClassifier(max_features='sqrt', random_state = 0)
+    elif algorithm == 'neural network':
+        model = MLPClassifier(random_state = 0)
+    else:
+        print('WARNING: algorithm type "'+algorithm+'" not recognized!')
+    
+    model.fit(df_scaled[df_scaled.columns[5:]], df_scaled['manual_behavior_label'])
+    
+    return model, scaler
+
 
 @ignore_warnings(category=ConvergenceWarning)
 def evaluate_models_x_fold_cross_val(vid_file_train, vid_file_test, 
@@ -656,6 +713,10 @@ def load_centroids_csv(centroids_file):
 
 
 
+
+
+
+# deprecated
 def train_model(manual_score_file,feature_file,fps,scaling_method,model_type):
     
     # load training data

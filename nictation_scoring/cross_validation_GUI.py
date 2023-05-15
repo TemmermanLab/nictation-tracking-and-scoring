@@ -1,12 +1,14 @@
 # -*- coding: utf-8 -*-
 """
-Created on Mon Jan 23 14:16:06 2023
-
-For running five fold cross validation on a manually scored nictation dataset
-specified by the user
+Created on Fri May 12 12:55:45 2023
 
 @author: PDMcClanahan
 """
+
+from tkinter import *
+import tkinter as tk
+from tkinter import filedialog
+
 import numpy as np
 import os
 import sys
@@ -38,9 +40,9 @@ run_cross_val = False
 var_file = 'C_elegans_full_cross_val_var_smoothing_and_metric_accuracy.pkl'
 
 
-
 def evaluate_models_x_fold_cross_val(vid_file_train, vid_file_test, 
                                      **kwargs):
+    
     '''Performs x-fold cross validation of the specified models with the
     specified smoothing sigmas usin <vid_file_train> and also evaluates
     model performance on <vid_file_test>'''
@@ -55,21 +57,24 @@ def evaluate_models_x_fold_cross_val(vid_file_train, vid_file_test,
     scaling_methods = kwargs.get('scaling_methods',['none','min max',
                         'variance','Gaussian','whiten'])
     
-    exclude_censored = kwargs.get('exclude_censored',False)
+    exclude_censored = kwargs.get('exclude_censored',True)
     
-    exclude_unfixed_centerlines = kwargs.get('exclude_unfixed_cl',False)
+    exclude_unfixed_centerlines = kwargs.get('exclude_unfixed_cl',True)
     
-    sigmas = kwargs.get('sigmas', np.arange(0,1.5,0.1))
+    sigmas = kwargs.get('sigmas', 0)
     
     fps = kwargs.get('fps', 5)
-        
+    
+    import pdb; pdb.set_trace()
     # if a save file is provided, information from that file is loaded and
     # progress
     save_file = kwargs.get('save_file', None)
     
     # load features and manual scores for the training and test videos
-    df_train, i_naninf_train = combine_and_prepare_man_scores_and_features(vid_file_train)
-    df_test, i_naninf_test = combine_and_prepare_man_scores_and_features(vid_file_test)
+    df_train, i_naninf_train = combine_and_prepare_man_scores_and_features(
+        vid_file_train)
+    df_test, i_naninf_test = combine_and_prepare_man_scores_and_features(
+        vid_file_test)
     
     
     # # plot the abundance of worm-frames with each behavior label
@@ -327,110 +332,144 @@ def evaluate_models_x_fold_cross_val(vid_file_train, vid_file_test,
     return accs, times, NRs, IRs, SRs, man_metrics
 
 
-# ax.spines['top'].set_visible(False)
-# ax.spines['right'].set_visible(False)
-# ax.legend(frameon = False,fontsize = 7)
-
-# ax.set_xlabel('Smoothing $\sigma$ (s)',font = 'Arial',fontsize=8)
-# ax.set_ylabel('Relative error',font = 'Arial',fontsize=8)
-
-# ax.tick_params(axis="x", labelsize=7) # set_xticklabels ignores fontsize
-# ax.tick_params(axis="y", labelsize=7) # set_xticklabels ignores fontsize
-
-# fig.savefig('five_fold_val_metric_accuracy_by_smoothing_sigma_all_Ce.png',dpi = 300,
-#             bbox_inches = 'tight')
-# plt.show()
-
-# print('Nictation ratio is most accurate at sigma = '+\
-#       str(round(sigmas[np.where(abs(np.mean(NRs_rel_sm,0))==min(abs(np.mean(NRs_rel_sm,0))))[0][0]],3))+\
-#       ' when it is '+\
-#       str(round(np.mean(NRs_rel_sm,0)[np.where(abs(np.mean(NRs_rel_sm,0))==min(abs(np.mean(NRs_rel_sm,0))))[0][0]],5))+\
-#       ' relative to the ground truth value.')
+def write_summary_csv():
+    dir_train = train_entry.get()
+    dir_val = val_entry.get()
+    algorithm = algo_menu.get()
     
-# print('Initiation rate is most accurate at sigma = '+\
-#       str(round(sigmas[np.where(abs(np.mean(IRs_rel_sm,0))==min(abs(np.mean(IRs_rel_sm,0))))[0][0]],3))+\
-#       ' when it is '+\
-#       str(round(np.mean(IRs_rel_sm,0)[np.where(abs(np.mean(IRs_rel_sm,0))==min(abs(np.mean(IRs_rel_sm,0))))[0][0]],5))+\
-#       ' relative to the ground truth value.')
+    evaluate_models_x_fold_cross_val(dir_train, dir_val, \
+                                     model_types = algorithm)
     
-# print('Stopping rate is most accurate at sigma = '+\
-#     str(round(sigmas[np.where(abs(np.mean(SRs_rel_sm,0))==min(abs(np.mean(SRs_rel_sm,0))))[0][0]],3))+\
-#     ' when it is '+\
-#     str(round(np.mean(SRs_rel_sm,0)[np.where(abs(np.mean(SRs_rel_sm,0))==min(abs(np.mean(SRs_rel_sm,0))))[0][0]],5))+\
-#     ' relative to the ground truth value.')
-
-# print('Overall transition rate is most accurate at sigma = '+\
-#     str(round(sigmas[np.where(abs(np.mean(TRs_rel_sm,0))==min(abs(np.mean(TRs_rel_sm,0))))[0][0]],3))+\
-#     ' when it is '+\
-#     str(round(np.mean(TRs_rel_sm,0)[np.where(abs(np.mean(TRs_rel_sm,0))==min(abs(np.mean(TRs_rel_sm,0))))[0][0]],5))+\
-#     ' relative to the ground truth value.')
-
-
-# # OVERALL ACCURACY
-# lims = np.arange(0,1001,1)
-# fig, ax = plt.subplots(figsize = (1.5,2))
-# ax.plot(sigmas[lims],np.mean(accs_sm[:,:,0],1)[lims],'k-')
-
-# i = np.median(np.where(np.mean(accs_sm[:,:,0],1)==max(np.mean(accs_sm[:,:,0],1))))
-# print(sigmas[int(i)])
-# # ax.annotate("$\sigma$ = 1.689 s\naccuracy = 0.936", xy=(1.689, 0.93562), 
-# #             xytext=(1, .93), arrowprops=dict(arrowstyle="->"), 
-# #             font = 'Arial', fontsize = 8)
-
-# ax.spines['top'].set_visible(False)
-# ax.spines['right'].set_visible(False)
-# ax.legend(frameon = False,fontsize = 7)
-
-# ax.set_xlabel('Smoothing $\sigma$ (s)',font = 'Arial',fontsize=8)
-# ax.set_ylabel('Accuracy',font = 'Arial',fontsize=8)
-
-# # ax.set_xticks([0,.5,1])
-
-# ax.tick_params(axis="x", labelsize=7) # set_xticklabels ignores fontsize
-# ax.tick_params(axis="y", labelsize=7) # set_xticklabels ignores fontsize
-
-# fig.savefig('five_fold_val_scoring_accuracy_by_smoothing_sigma_all_Ce.png',dpi = 300,
-#             bbox_inches = 'tight')
-# plt.show()
-
-# print('Scoring accuracy is highest at sigma = '+\
-#       str(round(sigmas[np.where(np.mean(accs_sm[:,:,0],1)==max(np.mean(accs_sm[:,:,0],1)))[0][0]],3))+\
-#       ' when it is '+\
-#       str(round(np.mean(accs_sm[:,:,0],1)[np.where(np.mean(accs_sm[:,:,0],1)==max(np.mean(accs_sm[:,:,0],1)))[0][0]],5))+\
-#       '.')
-
+def cross_validation_GUI():
     
-# lims = np.arange(0,1001,1)  
-# overall = (abs(np.mean(NRs_rel_sm,0)) + abs(np.mean(IRs_rel_sm,0)) + abs(np.mean(SRs_rel_sm,0)) + abs(np.mean(accs_sm[:,:,0],1)[0:1001]/1-1))
-# fig, ax = plt.subplots(figsize = (1.5,2))
-# ax.plot(sigmas[lims],overall[lims],'k-')
+    train_dir = []
+    test_dir = []
+    algorithm = []
+    
+    
+    xval_GUI = tk.Tk()
+    
+    train_label = Label(xval_GUI,text="Training dataset:")
+    train_label.grid(row=0, column=0, columnspan = 1,sticky="w")
+    train_entry = Entry(xval_GUI)
+    train_entry.grid(row=0, column=1, columnspan = 3,sticky = 'W'+'E'+'N'+'S')
+    
+    val_label = Label(xval_GUI,text="Validation dataset:")
+    val_label.grid(row=1, column=0, columnspan = 1,sticky="w")
+    val_entry = Entry(xval_GUI,text="")
+    val_entry.grid(row=1, column=1, columnspan = 3,sticky = 'W'+'E'+'N'+'S')
+    
+    
+    scale_meth_label = Label(xval_GUI,text="Scaling method:")
+    scale_meth_label.grid(row=2, column=0, columnspan = 1,sticky="w")
+    scaling_methods = ['none','min max','variance','Gaussian','whiten']
+    scale_meth_strv = StringVar()
+    scale_meth_strv.set( "none" )
+    scale_meth_drop = OptionMenu(xval_GUI , scale_meth_strv , *scaling_methods) \
+    .grid(row = 2,column = 1,columnspan=3,padx=0,pady=0,sticky = 'W'+'E'+'N'+'S') 
+    
+    alg_label = Label(xval_GUI,text="Algorithm:")
+    alg_label.grid(row=3, column=0, columnspan = 1,sticky="w")
+    algorithms =['logistic regression','decision tree', 'k nearest neighbors',
+        'linear discriminant analysis', 'Gaussian naive Bayes',
+        'support vector machine', 'random forest', 'neural network']
+    alg_strv = StringVar()
+    alg_strv.set( "random forest" )
+    algorithm_drop = OptionMenu(xval_GUI , alg_strv , *algorithms) \
+    .grid(row = 3,column = 1,columnspan=3,padx=0,pady=0,sticky = 'W'+'E'+'N'+'S') 
+    
+        
+    def select_training_set_button():
+        root = tk.Tk()
+        train_dir = tk.filedialog.askdirectory(initialdir = '/', \
+                title = "Select a folder containing features and manual scores for training... \
+                ...")
+        root.destroy()
+        train_entry.delete(0, tk.END)
+        train_entry.insert(0, train_dir)
+        
+    
+    def select_validation_set_button():
+        root = tk.Tk()
+        val_set_loc = tk.filedialog.askdirectory(initialdir = '/', \
+                title = "Select a folder containing features and manual scores for validation... \
+                ...")
+        root.destroy()
+        val_entry.delete(0, tk.END)
+        val_entry.insert(0, text = val_set_loc)
+        
+    
+    def run_button():
+        train_dir = train_entry.get()
+        val_dir = train_entry.get()
+        scale_meth = scale_meth_strv.get()
+        alg = alg_strv.get()
+        accs, times, NRs, IRs, SRs, man_metrics = \
+            evaluate_models_x_fold_cross_val(train_dir, val_dir,
+                                model_types = alg, scale_methods = scale_meth)
+                                    
+        
+        
+    
+         
+    def exit_button():
+        xval_GUI.destroy()
+        xval_GUI.quit()
+    
+    
+    
+    tk.Button(xval_GUI,
+              text = "SELECT TRAINING SET",
+              command = select_training_set_button) \
+              .grid(row = 4,
+                    column = 0,
+                    padx=0,
+                    pady=0,
+                    sticky = 'W'+'E'+'N'+'S')
+              
+    tk.Button(xval_GUI,
+              text = "SELECT VALIDATION SET",
+              command = select_validation_set_button) \
+              .grid(row = 4,
+                    column = 1,
+                    padx=0,
+                    pady=0,
+                    sticky = 'W'+'E'+'N'+'S')
+    
+    tk.Button(xval_GUI,
+              text = "RUN",
+              command = run_button) \
+              .grid(row = 4,
+                    column = 2,
+                    padx=0,
+                    pady=0,
+                    sticky = 'W'+'E'+'N'+'S')
+              
+    tk.Button(xval_GUI,
+              text = "EXIT",
+              command = exit_button) \
+              .grid(row = 4,
+                    column = 3,
+                    padx=0,
+                    pady=0,
+                    sticky = 'W'+'E'+'N'+'S')
+    
+    xval_GUI.title('Cross Validation GUI')
+    
+    curr_row = 0
+    
+    mainloop()
 
 
-# overall[np.where(overall==min(overall))[0]]
-
-# ax.annotate("$\sigma$ = 0.193 s\nc. r. err. = 0.095", xy=(0.193, 0.09466), 
-#             xytext=(.35, .11), arrowprops=dict(arrowstyle="->"), 
-#             font = 'Arial', fontsize = 8)
-
-# ax.spines['top'].set_visible(False)
-# ax.spines['right'].set_visible(False)
-
-# ax.set_xlabel('Smoothing $\sigma$ (s)',font = 'Arial',fontsize=8)
-# ax.set_ylabel('Combined relative error',font = 'Arial',fontsize=8)
-
-# ax.tick_params(axis="x", labelsize=7) # set_xticklabels ignores fontsize
-# ax.tick_params(axis="y", labelsize=7) # set_xticklabels ignores fontsize
-
-# fig.savefig('five_fold_val_combined_overall_error_by_smoothing_sigma_all_Ce.png',dpi = 300,
-#             bbox_inches = 'tight')
-# plt.show()
-
-# print('Overall error is lowest at sigma = '+\
-#       str(round(sigmas[np.where(overall==min(overall))[0][0]],3))+\
-#       ' when it is '+\
-#       str(round(overall[np.where(overall==min(overall))[0][0]],5))+\
-#       '.')
-
-
-
-
+if __name__ == '__main__':
+    
+    try:
+        cross_validation_GUI()
+    
+    except:
+        import pdb
+        import sys
+        import traceback
+        extype, value, tb = sys.exc_info()
+        traceback.print_exc()
+        pdb.post_mortem(tb)

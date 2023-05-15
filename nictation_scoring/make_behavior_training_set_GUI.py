@@ -94,7 +94,6 @@ def make_vignette(vid, track, dest, halfwidth = 100):
 
     
     
-    
 def make_behavior_training_set_GUI():
     
     destination = []
@@ -217,7 +216,7 @@ def make_behavior_training_set_GUI():
                     features_keep.insert(0, "vid_name", vid_name, True)
                     features_list.append(features_keep)
             features_training = pd.concat(features_list)
-            features_training.to_csv(features_file)
+            features_training.to_csv(features_file,index=False)
                 
             
         
@@ -270,6 +269,9 @@ def make_behavior_training_set_GUI():
                     padx=0,
                     pady=0,
                     sticky = 'W'+'E'+'N'+'S')
+    
+    spreadsheet_GUI.title('Behavior Training Set GUI')
+
     
     curr_row = 0
     
