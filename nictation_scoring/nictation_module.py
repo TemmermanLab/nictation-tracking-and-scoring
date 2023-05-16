@@ -68,6 +68,17 @@ import tracker as trkr
 import data_management_module as dmm
 
 
+
+# def load_and_clean_training_data(manual_score_file, feature_file):
+#     '''Combines the manual scores in <manual_score_file> with the features in
+#     <feature file>, removes censored worm-frames, worm-frames containing nan
+#     or inf, and flagged centerlines'''
+    
+    
+    
+#     return blah
+
+# deprecated
 def combine_and_prepare_man_scores_and_features(vid_file, score_file = None, 
                                         simplify = True, alt_feat = False):
     '''Loads manual scores and features from the same video and combines and
@@ -129,30 +140,56 @@ def remove_censored_frames(df):
     return df.reset_index().drop(columns = ['index','level_0'])
 
 
-def remove_unfixed_centerlines(df,):
-    '''Removes from the dataframe rows in which the centerline was flagged but
-    not successfully fixed, frames one or two frames away, provided they are
-    part of the same worm track. In the future, it could also remove 
-    disconnected parts of tracks that are left behind'''
+
+def clean_dataset(df):
+    '''Combines removal of worm-frames containing features with NaN or inf
+    values, the removal of censored and censored-adjacent frames, and the
+    removal of worm-frames with flagged centerlines (and those adjacent). Here
+    "adjacent" means two frames before or after. This is to avoid problems
+    with statistical features calculated over several frames.'''
+    
+    
     
     df = df.reset_index()
-   
     i_del = []
+    
+    
+    # find indices of worm-frames with NaN or inf in the features
+    df.replace([np.inf, -np.inf], np.nan, inplace=True)
+    i_del = i_del + list(df[df.isna().any(axis=1)].index)
+        
+    
+    # find indices of censored and censored-adjacent worm-frames within the
+    # same track
     for f in range(len(df)):
         if df['manual_behavior_label'][f] == -1:
             i_del.append(f)
-            
             w = df['worm'][f]
             for offset in [-2,-1,1,2]:
                 if f+offset >=0 and f+offset < len(df):
                     if df['worm'][f+offset] == w and f+offset not in i_del:
                         i_del.append(f+offset)
     
+    
+    # find indices of centerline-flagged worm-frames and those adject within
+    # the same track
+    ix_prime = list(np.where(flgs==1)[0])+list(np.where(flgs==3)[0])
+    ix_adj = []
+    for i in ix_prime:
+        for offset in [-2,-1,1,2]:
+            if i+offset > 0 and i+offset < len(df) and \
+                df.iloc[i]['worm'] == df.iloc[i+offset]['worm']:
+                ix_adj.append(i+offset)
+    i_del = i_del + list(np.unique(np.array(ix_prime+ix_adj)))
+    
+    
+    # remove the problem worm-frames
+    i_del = list(np.sort(np.unique(np.array(i_del))))
     df = df.drop(index=i_del)
-    # df = df.reset_index()
-    # df = df.drop(columns = 'level_0')
+    
+    
     return df.reset_index().drop(columns = ['index','level_0'])
-
+    
     
 def train_behavior_classifier(train_data_dir, scaling_method, algorithm):
     '''Uses the manual scores and features in <train_data_dir>, scales the
@@ -164,9 +201,11 @@ def train_behavior_classifier(train_data_dir, scaling_method, algorithm):
     # scaling_method = 'whiten'
     # algorithm = 'random forest'
     
+    
     # load features
     feature_file = train_data_dir + '//nictation_features.csv'
     df = pd.read_csv(feature_file)
+    
     
     # load manual scores    
     manual_score_file =  train_data_dir + '//manual_nictation_scores.csv'
@@ -176,11 +215,11 @@ def train_behavior_classifier(train_data_dir, scaling_method, algorithm):
         man_scores += list(scr_w)
     df.insert(2,'manual_behavior_label',man_scores)
     
+    
     # remove NaN values
     df_masked, ix = nan_inf_mask_dataframe(df)
     
 
-    
     # scale data
     df_scaled, scaler = scale_training_features(df_masked, scaling_method,
                                             df_masked.columns[5:])
@@ -208,9 +247,266 @@ def train_behavior_classifier(train_data_dir, scaling_method, algorithm):
     
     model.fit(df_scaled[df_scaled.columns[5:]], df_scaled['manual_behavior_label'])
     
+    
     return model, scaler
 
 
+@ignore_warnings(category=ConvergenceWarning)
+def five_fold_cross_validation(train_dir, algorithm, scaling_method, val_dir = None):
+    '''Performs five fold cross validation of using the <algorithm>, 
+    <scaling method>, and manually-scored data in <train_dir> and, optionally,
+    <val_dir>. This is a streamlined version of earlier functions that tested
+    several models and scaling methods at once, and evaluated nictation
+    metrics as well as accuracy. This version only calculates the accuracy of
+    the raw classifier output. Censored frames and flagged centerlines are not
+    considered.'''
+    
+    import pdb; pdb.set_trace()
+    
+    def prep_scores(data_dir):
+        
+        # load training / testing manual scores and features
+        feature_file = data_dir + '//nictation_features.csv'
+        df = pd.read_csv(feature_file)
+        
+        # load manual scores    
+        manual_score_file =  data_dir + '//manual_nictation_scores.csv'
+        man_scores_lst = load_manual_scores_csv(manual_score_file, simplify = False)
+        man_scores = []
+        for scr_w in man_scores_lst:
+            man_scores += list(scr_w)
+        df.insert(4,'manual_behavior_label',man_scores)
+        
+        # load centerline flags
+        clns, cln_flags = dmm.load_centerlines_csv(
+            os.path.splitext(vid_file)[0] + \
+                r'_tracking\centerlines')
+        cln_flags_linear = []
+        for i in range(len(cln_flags)):
+            cln_flags_linear = cln_flags_linear + cln_flags[i] 
+        cln_flags_linear = np.array(cln_flags_linear)
+        
+        
+        # remove censored, nan/inf-containing, and flagged centerline worm-frames
+        df_masked = clean_dataset(df)
+        
+
+        
+        return df_masked, ix
+    
+    df_test = prep_scores(train_dir)
+    if val_dir is not None:
+        df_val = prep_scores(val_dir)
+
+    
+    
+    
+    
+    all_worms = np.sort(np.unique(df_train['worm']))
+    
+    # determine the group indices for x-fold cross validation
+    fold_inds = [list(np.arange(round(i*(len(all_worms)-1)/x),
+              round((i+1)*(len(all_worms)-1)/x))) for i in range(x)]
+    
+    # actual worm numbers in case worms were removed entirely above
+    fold_inds2 = copy.copy(fold_inds)
+    for f in range(len(fold_inds)):
+        fold_inds2[f] = all_worms[fold_inds[f]]
+        
+    # calculate some manual metric values
+    man_scores_train_vid = separate_list_by_worm(
+        df_train['manual_behavior_label'], df_train)
+    man_metrics = {
+        "NR_test": nict_met.nictation_ratio(man_scores_test_vid, False),
+        "IR_test": nict_met.initiation_rate(man_scores_test_vid, False),
+        "TR_test": nict_met.stopping_rate(man_scores_test_vid, False),
+        "NR_train": nict_met.nictation_ratio(man_scores_train_vid , False),
+        "IR_train": nict_met.initiation_rate(man_scores_train_vid , False),
+        "TR_train": nict_met.stopping_rate(man_scores_train_vid , False)
+        }
+
+    # before starting, try loading and see if any progress as been made
+    if save_file is not None and os.path.isfile(save_file):
+        with open(save_file, 'rb') as f:     
+            model_types, scaling_methods, sigmas, accs, times, NRs, IRs,\
+                SRs, man_metrics, scaling_progress = pickle.load(f)
+    else:
+        scaling_progress = 0
+
+    # begin x-fold cross validation loop
+    for sm in range(scaling_progress,len(scaling_methods)):
+        
+        print('On scaling method '+str(sm+1)+' of '+str(len(scaling_methods)))
+        if scaling_methods[sm] != 'none':
+            df_train_scaled, scaler = scale_training_features(df_train, 
+                                    scaling_methods[sm], df_train.columns[3:])
+            
+            cols = df_test.columns[3:]
+            df_test_scaled = copy.deepcopy(df_test)
+            df_test_scaled[cols] = scaler.transform(df_test[cols])
+            
+        else:
+            df_train_scaled = copy.deepcopy(df_train)
+            df_test_scaled = copy.deepcopy(df_test)
+        
+        for t in range(x):
+            print('On fold ' + str(t+1) + ' of ' + str(x))
+
+            ####
+            
+            w_val = list(fold_inds[t])
+            w_train = []
+            for wv in range(x):
+                if wv != t:
+                    w_train = w_train + list(fold_inds2[wv])
+                    
+            
+            i_train = []
+            for w in w_train:
+                i_train = i_train + df_train_scaled.index[
+                    df_train_scaled['worm'] == w].tolist()
+            
+            i_val = []
+            for w in w_val:
+                i_val = i_val + df_train_scaled.index[
+                    df_train_scaled['worm'] == w].tolist()
+            
+            x_train, x_val, y_train, y_val, wi_train, wi_val = split_by_w_ind(
+                                              df_train_scaled, i_train, i_val)
+            del wv, w
+            
+            
+            
+            # Also separate the manual scores into training and validation parts
+            ms_train = df_train_scaled['manual_behavior_label'].iloc[i_train]
+            ms_val = df_train_scaled['manual_behavior_label'].iloc[i_val]
+            ms_test = df_test_scaled['manual_behavior_label']
+
+            
+            
+            # [np.array(ms_train_all[x]) for x in w_val]
+            # ms_train = [ms_train_all[x] for x in w_train]
+            
+            ####
+            # x_train, x_test, y_train, y_test, wi_train, wi_test = split(
+            #     df_train_scaled, 0.75, rand_split)
+            # man_scores_train_train = separate_list_by_worm(y_train, wi_train)
+            # man_scores_train_test = separate_list_by_worm(y_test, wi_test)
+            
+            for mt in range(len(model_types)):
+                print(model_types[mt])
+                
+                # train on training video and record training and test 
+                # accuracy on this video and elapsed time
+                t0 = time.time()
+                categories = np.unique(y_train) # sometimes a label is not
+                # represented in the training set
+                mod, train_acc, train_test_acc, probs, preds = \
+                    learn_and_predict(x_train, x_val, y_train, y_val,
+                                      model_types[mt])
+                train_time = time.time()-t0
+                
+                
+                # make probability infrerence on the training and test 
+                # portions of the training video to be used below
+                probs_train_train = mod.predict_proba(x_train)
+                probs_train_val = mod.predict_proba(x_val)
+                
+                # use the same model to make inferences on another video and
+                # record the elapsed time and accuracy
+                t0 = time.time()
+                probs_test_vid = mod.predict_proba(
+                    df_test_scaled[df_test_scaled.columns[4:]])
+                infr_time = time.time()-t0
+                
+                # cycle through smoothing sigmas
+                for sg in range(len(sigmas)):
+                    
+                    # smooth and inferences and calculate nictation metrics on
+                    # the training set of the training video
+                    probs_smooth = smooth_probabilities(
+                        probs_train_train, sigmas[sg], fps)
+                    preds_smooth = probabilities_to_predictions(probs_smooth,
+                                                                categories)
+                    preds_smooth_list = separate_list_by_worm(
+                        preds_smooth, wi_train)
+                
+                    ms_train_list = separate_list_by_worm(
+                            ms_train, wi_train)
+                
+                    NRs[sm,t,mt,sg,0] = nict_met.nictation_ratio(
+                        preds_smooth_list, False)
+                    IRs[sm,t,mt,sg,0] = nict_met.initiation_rate(
+                        preds_smooth_list, False)
+                    SRs[sm,t,mt,sg,0] = nict_met.stopping_rate(
+                        preds_smooth_list, False)
+                    accs[sm,t,mt,sg,0] = compare_scores_list(
+                        ms_train_list,preds_smooth_list)
+                    
+                    
+                    # smooth and inferences and calculate nictation metrics on
+                    # the test set of the training video
+                    probs_smooth = smooth_probabilities(
+                        probs_train_val, sigmas[sg], fps)
+                    preds_smooth = probabilities_to_predictions(probs_smooth,
+                                                                categories)
+                    preds_smooth_list = separate_list_by_worm(
+                        preds_smooth, wi_val)
+                    
+                    ms_val_list = separate_list_by_worm(
+                        ms_val, wi_val)
+                
+                    NRs[sm,t,mt,sg,1] = nict_met.nictation_ratio(
+                        preds_smooth_list, False)
+                    IRs[sm,t,mt,sg,1] = nict_met.initiation_rate(
+                        preds_smooth_list, False)
+                    SRs[sm,t,mt,sg,1] = nict_met.stopping_rate(
+                        preds_smooth_list, False)
+                    accs[sm,t,mt,sg,1] = compare_scores_list(
+                        ms_val_list, preds_smooth_list)
+                    
+                    
+                    # smooth and inferences and calculate nictation metrics on
+                    # the separate test video
+                    
+                    probs_smooth = smooth_probabilities(
+                        probs_test_vid, sigmas[sg], fps)
+                    preds_smooth = probabilities_to_predictions(probs_smooth,
+                                                                categories)
+                    preds_smooth_list = separate_list_by_worm(
+                        preds_smooth, df_test_scaled)
+                
+                    ms_test_list = separate_list_by_worm(
+                        ms_test, df_test_scaled)
+                
+                    NRs[sm,t,mt,sg,2] = nict_met.nictation_ratio(
+                        preds_smooth_list, False)
+                    IRs[sm,t,mt,sg,2] = nict_met.initiation_rate(
+                        preds_smooth_list, False)
+                    SRs[sm,t,mt,sg,2] = nict_met.stopping_rate(
+                        preds_smooth_list, False)
+                    accs[sm,t,mt,sg,2] = compare_scores_list(
+                        man_scores_test_vid, preds_smooth_list)
+               
+                
+                # training and inference times do not include the smoothing
+                # time, which is basically negligable
+                times[sm,t,mt,0] = train_time
+                times[sm,t,mt,1] = infr_time
+
+        scaling_progress = sm+1
+        if save_file is not None:
+            with open(save_file, 'wb') as f:
+                pickle.dump([model_types, scaling_methods, sigmas, accs, 
+                             times, NRs, IRs, SRs, man_metrics, 
+                             scaling_progress], f)   
+          
+    
+    return accs
+
+
+
+# deprecated
 @ignore_warnings(category=ConvergenceWarning)
 def evaluate_models_x_fold_cross_val(vid_file_train, vid_file_test, 
                                      **kwargs):
@@ -867,7 +1163,7 @@ def calculate_metafeatures(df,fps):
     statistical features.'''
     
     df_meta = copy.deepcopy(df)
-    feats = copy.copy(df.columns[3:])
+    feats = copy.copy(df.columns[4:])
 
     
     # first derivative based on previous frame
@@ -1130,10 +1426,9 @@ def learn_and_predict(X_train, X_val, y_train, y_val,
 
 
 
-def calculate_features(vid_file, tracking_method = 'mRCNN'):
+def calculate_features(vid_file):
     
-    tracking_method = ''#'_' + tracking_method
-    
+        
     gap = 1
     halfwidth = 88
     path_f = 3
@@ -1141,18 +1436,18 @@ def calculate_features(vid_file, tracking_method = 'mRCNN'):
     
     # load centroids, first frames, centerlines, and centerline flags
     cents, ffs  = dmm.load_centroids_csv(
-        os.path.splitext(vid_file)[0] + tracking_method + \
+        os.path.splitext(vid_file)[0] + \
             r'_tracking\centroids.csv')
     
     clns, cln_flags = dmm.load_centerlines_csv(
-        os.path.splitext(vid_file)[0] + tracking_method + \
+        os.path.splitext(vid_file)[0] + \
             r'_tracking\centerlines')
 
     
     # load tracking parameters
     params = dmm.load_parameter_csv(
-        os.path.splitext(vid_file)[0] + tracking_method \
-            + r'_tracking\tracking_parameters.csv')
+        os.path.splitext(vid_file)[0] +\
+            r'_tracking\tracking_parameters.csv')
     
     
     vid = cv2.VideoCapture(vid_file)
@@ -1161,11 +1456,12 @@ def calculate_features(vid_file, tracking_method = 'mRCNN'):
 
     
     # names of features
-    cols = ['worm', 'frame', 'video_frame', 'blur', 'bkgnd_sub_blur', 
-            'bkgnd_sub_blur_ends','ends_mov_bias', 'body_length',  
-            'total_curvature','lateral_movement', 'longitudinal_movement', 
-            'out_of_track_centerline_mov', 'angular_sweep', 'cent_path_past',
-            'cent_path_fut', 'centroid_progress', 'head_tail_path_bias', 
+    cols = ['worm', 'frame', 'video_frame','centerline_flag', 'blur',
+            'bkgnd_sub_blur', 'bkgnd_sub_blur_ends','ends_mov_bias', 
+            'body_length', 'total_curvature','lateral_movement',
+            'longitudinal_movement', 'out_of_track_centerline_mov',
+            'angular_sweep', 'cent_path_past', 'cent_path_fut', 
+            'centroid_progress', 'head_tail_path_bias',
             'centroid_path_PC_var_ratio', 'centroid_path_PC_var_product']
     
     
@@ -1220,7 +1516,8 @@ def calculate_features(vid_file, tracking_method = 'mRCNN'):
                                                 clns, w, f, path_f, scl),
                         'centroid_path_PC_var_ratio' : rat, 
                         'centroid_path_PC_var_product' : prod,
-                        'video_frame' : int(f + ffs[w])
+                        'video_frame' : int(f + ffs[w]),
+                        'centerline_flag' : int(cln_flags[w][f])
                         }
             
             
@@ -1231,13 +1528,7 @@ def calculate_features(vid_file, tracking_method = 'mRCNN'):
     
     
     # tack on activity
-    df.insert(3,'activity',activity)
-    
-    # also include actual video frames
-    
-    # # reload load indicator values
-    # df = pd.read_csv(os.path.splitext(vid_file)[0] + 
-    #                   r'_tracking\nictation_features.csv')
+    df.insert(4,'activity',activity)
     
     
     # calculate first derivatives
@@ -1246,9 +1537,10 @@ def calculate_features(vid_file, tracking_method = 'mRCNN'):
     
     
     # save feature values
-    df.to_csv(os.path.splitext(vid_file)[0] + tracking_method + \
+    df.to_csv(os.path.splitext(vid_file)[0] + \
               r'_tracking\nictation_features.csv', index = False)
     
+
 
 def score_behavior(feature_file, behavior_model_file, behavior_sig, fps,
                    save_path, save_scores = True, return_scores = False):
@@ -1412,40 +1704,20 @@ def Junho_Lee_scores(scores, activity, fps = 5, assume_active = True):
 if __name__ == '__main__':
     try:
         
-        # vf = r"C:\Users\Temmerman Lab\Dropbox\Temmerman_Lab\data\Celegans_vids_cropped_full\Luca_T2_Rep1_day60002 22-01-18 11-49-24_crop_1_to_300_inc_3.avi"
-        # calculate_features(vf)
+        train_dir = r'C:\Users\PDMcClanahan\Dropbox\Temmerman_Lab\data\test_behavior_training_set'
+        algorithm = 'random forest'
+        scaling_method = 'whiten'
+        val_dir = None
+        results = five_fold_cross_validation(
+            train_dir, algorithm, scaling_method, val_dir = None)
         
-        
-        
-        
-        # vf = r"C:\Users\Temmerman Lab\Desktop\Celegans_nictation_dataset\Ce_R2_d21.avi"
-        # calculate_features(vf)
-        
-        # vf = r"C:\Users\Temmerman Lab\Desktop\Celegans_nictation_dataset\Ce_R3_d06.avi"
-        # calculate_features(vf)
-
-        
-        vid_dir = r"D:\Data_flp_7_updated"
-        file_list = sorted(os.listdir(vid_dir))
-        for f in file_list[:]:
-            if f[-4:] == '.avi' and f[:-4]+'_tracking' in file_list:
-                calculate_features(vid_dir + '\\' + f)
-        
-        # vid_dir = r"D:\Pat working\Scarpocapsae_nictation_dataset"
-        # file_list = os.listdir(vid_dir)
-        # for f in file_list[0:]:
-        #     if f[-4:] == '.avi' and f[:-4]+'_mRCNN_tracking' in file_list:
-        #         calculate_features(vid_dir + '\\' + f)
-                
-        # vid_dir = r"D:\Data_flp-7_downsampled_5min"
-        # file_list = os.listdir(vid_dir)
-        # for f in file_list[0:]:
+        # vid_dir = r"D:\Data_flp_7_updated"
+        # file_list = sorted(os.listdir(vid_dir))
+        # for f in file_list[:]:
         #     if f[-4:] == '.avi' and f[:-4]+'_tracking' in file_list:
         #         calculate_features(vid_dir + '\\' + f)
         
-        # vf = r"C:\Users\Temmerman Lab\Desktop\test_data_for_tracking\R1d4_first_four.avi"
-        # calculate_features(vf)
-        
+
         
     except:
         

@@ -22,33 +22,12 @@ import time
 from datetime import datetime
 
 
-# now = datetime.now()
-# current_time = now.strftime("%Y%m%d%H%M%S")
-# print("Current Time =", current_time)
-
-# from pathlib import Path
-# home = str(Path.home())
-
-# sys.path.append(home + '//Dropbox//Temmerman_Lab//code//tracking-and-' + \
-#                 'scoring-nictation//nictation_scoring')
-
-# os.chdir(home + '//Dropbox//Temmerman_Lab//code//nictation-scoring-paper-' + \
-#          'analysis//Celegans_timecourse')
-
-
-
 sys.path.append(os.path.split(__file__)[0])
 import nictation_module as nm
 
 
 def train_behavior_classifier_GUI():
-    import nictation_module as nm
 
-    # train_dir = []
-    # test_dir = []
-    # algorithm = []
-    
-    
     train_classifier_GUI = tk.Tk()
     
     train_label = Label(train_classifier_GUI,text="Training dataset:")
