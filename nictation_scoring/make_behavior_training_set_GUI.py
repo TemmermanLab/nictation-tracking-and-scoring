@@ -224,8 +224,9 @@ def make_behavior_training_set_GUI():
             for v in range(len(videos)):
                 for t in range(len(tracks[v])):
                     make_vignette(videos[v], tracks[v][t], destination)
-        
-        
+            
+            print('Done making behavior training set!')
+            
         
          
     def exit_button():

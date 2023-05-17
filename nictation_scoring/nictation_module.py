@@ -148,43 +148,43 @@ def clean_dataset(df):
     "adjacent" means two frames before or after. This is to avoid problems
     with statistical features calculated over several frames.'''
     
-    
-    
     df = df.reset_index()
-    i_del = []
     
     
     # find indices of worm-frames with NaN or inf in the features
     df.replace([np.inf, -np.inf], np.nan, inplace=True)
-    i_del = i_del + list(df[df.isna().any(axis=1)].index)
+    i_del_naninf = list(df[df.isna().any(axis=1)].index)
         
     
     # find indices of censored and censored-adjacent worm-frames within the
     # same track
+    i_del_cen = []
     for f in range(len(df)):
         if df['manual_behavior_label'][f] == -1:
-            i_del.append(f)
+            i_del_cen.append(f)
             w = df['worm'][f]
             for offset in [-2,-1,1,2]:
                 if f+offset >=0 and f+offset < len(df):
-                    if df['worm'][f+offset] == w and f+offset not in i_del:
-                        i_del.append(f+offset)
+                    if df['worm'][f+offset] == w and f+offset not in i_del_cen:
+                        i_del_cen.append(f+offset)
     
     
     # find indices of centerline-flagged worm-frames and those adject within
     # the same track
-    ix_prime = list(np.where(flgs==1)[0])+list(np.where(flgs==3)[0])
+    ix_prime = list(np.where(df['centerline_flag']==1)[0])+\
+        list(np.where(df['centerline_flag']==3)[0])
     ix_adj = []
     for i in ix_prime:
         for offset in [-2,-1,1,2]:
             if i+offset > 0 and i+offset < len(df) and \
                 df.iloc[i]['worm'] == df.iloc[i+offset]['worm']:
                 ix_adj.append(i+offset)
-    i_del = i_del + list(np.unique(np.array(ix_prime+ix_adj)))
+    i_del_flag = list(np.unique(np.array(ix_prime+ix_adj)))
     
     
     # remove the problem worm-frames
-    i_del = list(np.sort(np.unique(np.array(i_del))))
+    i_del = list(np.sort(np.unique(np.array(
+        i_del_naninf+i_del_cen+i_del_flag))))
     df = df.drop(index=i_del)
     
     
@@ -209,7 +209,8 @@ def train_behavior_classifier(train_data_dir, scaling_method, algorithm):
     
     # load manual scores    
     manual_score_file =  train_data_dir + '//manual_nictation_scores.csv'
-    man_scores_lst = load_manual_scores_csv(manual_score_file, simplify = False)
+    man_scores_lst = load_manual_scores_csv(manual_score_file, 
+                                            simplify = False)
     man_scores = []
     for scr_w in man_scores_lst:
         man_scores += list(scr_w)
@@ -225,6 +226,13 @@ def train_behavior_classifier(train_data_dir, scaling_method, algorithm):
                                             df_masked.columns[5:])
     
     
+    model = fit_model(df_scaled[df_scaled.columns[5:]], \
+              df_scaled['manual_behavior_label'])
+    
+    return model, scaler
+
+
+def fit_model(x,y,algorithm):
     # initialize model, note GNB has no random state option
     if algorithm == 'logistic regression':
         model = LogisticRegression(max_iter = 1000, random_state = 0)
@@ -245,14 +253,19 @@ def train_behavior_classifier(train_data_dir, scaling_method, algorithm):
     else:
         print('WARNING: algorithm type "'+algorithm+'" not recognized!')
     
-    model.fit(df_scaled[df_scaled.columns[5:]], df_scaled['manual_behavior_label'])
+    model.fit(x, y)
+    
+    return model
     
     
-    return model, scaler
+
+
+
 
 
 @ignore_warnings(category=ConvergenceWarning)
-def five_fold_cross_validation(train_dir, algorithm, scaling_method, val_dir = None):
+def k_fold_cross_validation(train_dir, algorithm, scaling_method,
+                               val_dir = None, k = 5):
     '''Performs five fold cross validation of using the <algorithm>, 
     <scaling method>, and manually-scored data in <train_dir> and, optionally,
     <val_dir>. This is a streamlined version of earlier functions that tested
@@ -261,7 +274,7 @@ def five_fold_cross_validation(train_dir, algorithm, scaling_method, val_dir = N
     the raw classifier output. Censored frames and flagged centerlines are not
     considered.'''
     
-    import pdb; pdb.set_trace()
+    fps = 5
     
     def prep_scores(data_dir):
         
@@ -269,240 +282,116 @@ def five_fold_cross_validation(train_dir, algorithm, scaling_method, val_dir = N
         feature_file = data_dir + '//nictation_features.csv'
         df = pd.read_csv(feature_file)
         
+        
         # load manual scores    
         manual_score_file =  data_dir + '//manual_nictation_scores.csv'
-        man_scores_lst = load_manual_scores_csv(manual_score_file, simplify = False)
+        man_scores_lst = load_manual_scores_csv(manual_score_file,
+                                                simplify = False)
         man_scores = []
         for scr_w in man_scores_lst:
             man_scores += list(scr_w)
-        df.insert(4,'manual_behavior_label',man_scores)
-        
-        # load centerline flags
-        clns, cln_flags = dmm.load_centerlines_csv(
-            os.path.splitext(vid_file)[0] + \
-                r'_tracking\centerlines')
-        cln_flags_linear = []
-        for i in range(len(cln_flags)):
-            cln_flags_linear = cln_flags_linear + cln_flags[i] 
-        cln_flags_linear = np.array(cln_flags_linear)
+        df.insert(5,'manual_behavior_label',man_scores)
         
         
         # remove censored, nan/inf-containing, and flagged centerline worm-frames
         df_masked = clean_dataset(df)
         
 
-        
-        return df_masked, ix
+        return df_masked
     
-    df_test = prep_scores(train_dir)
-    if val_dir is not None:
+    df_train_test = prep_scores(train_dir)
+    if val_dir != '':
         df_val = prep_scores(val_dir)
 
     
-    
-    
-    
-    all_worms = np.sort(np.unique(df_train['worm']))
-    
     # determine the group indices for x-fold cross validation
-    fold_inds = [list(np.arange(round(i*(len(all_worms)-1)/x),
-              round((i+1)*(len(all_worms)-1)/x))) for i in range(x)]
+    vid_names_fold = []
+    worms_fold = []
+    worm_strings = []
+    for i in range(len(df_train_test)):
+        worm_string = df_train_test.iloc[i]['vid_name']+\
+            str(df_train_test.iloc[i]['worm'])
+        if worm_string not in worm_strings:
+            worm_strings.append(worm_string)
+            vid_names_fold.append(df_train_test.iloc[i]['vid_name'])
+            worms_fold.append(df_train_test.iloc[i]['worm'])
+    del worm_strings
+
+    fold_worms = [list(np.arange(round(i*(len(worms_fold)-1)/k),
+              round((i+1)*(len(worms_fold)-1)/k))) for i in range(k)]
     
-    # actual worm numbers in case worms were removed entirely above
-    fold_inds2 = copy.copy(fold_inds)
-    for f in range(len(fold_inds)):
-        fold_inds2[f] = all_worms[fold_inds[f]]
+    
+    def intersection(lst1, lst2):
+        lst3 = [value for value in lst1 if value in lst2]
+        return lst3
+    
+    
+    fold_inds = []
+    for f in range(len(fold_worms)):
+        fi = []
+        for w in fold_worms[f]:
+            i_vid = np.where(df_train_test["vid_name"]==vid_names_fold[w])[0] 
+            i_wor =  np.where(df_train_test["worm"]==worms_fold[w])[0]
+            fi = fi + intersection(i_vid,i_wor)
+        fold_inds.append(fi)
+    
+   
+    # k fold cross validation
+    accs_train = []; accs_test = []; accs_val = []
+    for fold in range(len(fold_inds)):
+        print(f"{k} fold cross validation, fold {fold+1}")
+        # separate training and test sets
+        df_train = df_train_test.drop(df_train_test.iloc[fold_inds[fold]].index)
+        df_test = df_train_test.iloc[fold_inds[fold]]                    
         
-    # calculate some manual metric values
-    man_scores_train_vid = separate_list_by_worm(
-        df_train['manual_behavior_label'], df_train)
-    man_metrics = {
-        "NR_test": nict_met.nictation_ratio(man_scores_test_vid, False),
-        "IR_test": nict_met.initiation_rate(man_scores_test_vid, False),
-        "TR_test": nict_met.stopping_rate(man_scores_test_vid, False),
-        "NR_train": nict_met.nictation_ratio(man_scores_train_vid , False),
-        "IR_train": nict_met.initiation_rate(man_scores_train_vid , False),
-        "TR_train": nict_met.stopping_rate(man_scores_train_vid , False)
-        }
 
-    # before starting, try loading and see if any progress as been made
-    if save_file is not None and os.path.isfile(save_file):
-        with open(save_file, 'rb') as f:     
-            model_types, scaling_methods, sigmas, accs, times, NRs, IRs,\
-                SRs, man_metrics, scaling_progress = pickle.load(f)
-    else:
-        scaling_progress = 0
-
-    # begin x-fold cross validation loop
-    for sm in range(scaling_progress,len(scaling_methods)):
+        # scale data
+        df_train_scaled, scaler = scale_training_features(df_train, 
+                                    scaling_method, df_train.columns[6:])
+        df_test_scaled = copy.copy(df_test)
+        df_test_scaled[df_test_scaled.columns[6:]] = scaler.transform(
+            df_test_scaled[df_test_scaled.columns[6:]])
         
-        print('On scaling method '+str(sm+1)+' of '+str(len(scaling_methods)))
-        if scaling_methods[sm] != 'none':
-            df_train_scaled, scaler = scale_training_features(df_train, 
-                                    scaling_methods[sm], df_train.columns[3:])
+        
+        # train classifier
+        model = fit_model(df_train_scaled[df_train_scaled.columns[6:]], \
+            df_train_scaled['manual_behavior_label'],algorithm)
+        
             
-            cols = df_test.columns[3:]
-            df_test_scaled = copy.deepcopy(df_test)
-            df_test_scaled[cols] = scaler.transform(df_test[cols])
-            
+        # test classfier on the training and testing data
+        probs_train = model.predict_proba(df_train_scaled[df_train_scaled.columns[6:]])
+        probs_train_smooth = smooth_probabilities(probs_train,0,fps)
+        preds_train = probabilities_to_predictions(probs_train,[0,1])
+        accs_train.append(compare_scores(
+                        df_train['manual_behavior_label'],preds_train))
+        
+        
+        probs_test = model.predict_proba(df_test_scaled[df_test_scaled.columns[6:]])
+        probs_test_smooth = smooth_probabilities(probs_test,0,fps)
+        preds_test = probabilities_to_predictions(probs_test,[0,1])
+        accs_test.append(compare_scores(
+                        df_test['manual_behavior_label'],preds_test))
+        
+        # if provided, test classifier on validation data
+        if val_dir != '':
+            df_val_scaled = copy.copy(df_val)
+            df_val_scaled[df_val_scaled.columns[6:]] = scaler.transform(
+            df_val_scaled[df_val_scaled.columns[6:]])
+            probs_val = model.predict_proba(df_val_scaled[df_val_scaled.columns[6:]])
+            probs_val_smooth = smooth_probabilities(probs_val,0,fps)
+            preds_val = probabilities_to_predictions(probs_val,[0,1])
+            accs_val.append(compare_scores(
+                            df_val['manual_behavior_label'],preds_val))
         else:
-            df_train_scaled = copy.deepcopy(df_train)
-            df_test_scaled = copy.deepcopy(df_test)
+           accs_val.append(np.nan)
         
-        for t in range(x):
-            print('On fold ' + str(t+1) + ' of ' + str(x))
-
-            ####
-            
-            w_val = list(fold_inds[t])
-            w_train = []
-            for wv in range(x):
-                if wv != t:
-                    w_train = w_train + list(fold_inds2[wv])
-                    
-            
-            i_train = []
-            for w in w_train:
-                i_train = i_train + df_train_scaled.index[
-                    df_train_scaled['worm'] == w].tolist()
-            
-            i_val = []
-            for w in w_val:
-                i_val = i_val + df_train_scaled.index[
-                    df_train_scaled['worm'] == w].tolist()
-            
-            x_train, x_val, y_train, y_val, wi_train, wi_val = split_by_w_ind(
-                                              df_train_scaled, i_train, i_val)
-            del wv, w
-            
-            
-            
-            # Also separate the manual scores into training and validation parts
-            ms_train = df_train_scaled['manual_behavior_label'].iloc[i_train]
-            ms_val = df_train_scaled['manual_behavior_label'].iloc[i_val]
-            ms_test = df_test_scaled['manual_behavior_label']
-
-            
-            
-            # [np.array(ms_train_all[x]) for x in w_val]
-            # ms_train = [ms_train_all[x] for x in w_train]
-            
-            ####
-            # x_train, x_test, y_train, y_test, wi_train, wi_test = split(
-            #     df_train_scaled, 0.75, rand_split)
-            # man_scores_train_train = separate_list_by_worm(y_train, wi_train)
-            # man_scores_train_test = separate_list_by_worm(y_test, wi_test)
-            
-            for mt in range(len(model_types)):
-                print(model_types[mt])
-                
-                # train on training video and record training and test 
-                # accuracy on this video and elapsed time
-                t0 = time.time()
-                categories = np.unique(y_train) # sometimes a label is not
-                # represented in the training set
-                mod, train_acc, train_test_acc, probs, preds = \
-                    learn_and_predict(x_train, x_val, y_train, y_val,
-                                      model_types[mt])
-                train_time = time.time()-t0
-                
-                
-                # make probability infrerence on the training and test 
-                # portions of the training video to be used below
-                probs_train_train = mod.predict_proba(x_train)
-                probs_train_val = mod.predict_proba(x_val)
-                
-                # use the same model to make inferences on another video and
-                # record the elapsed time and accuracy
-                t0 = time.time()
-                probs_test_vid = mod.predict_proba(
-                    df_test_scaled[df_test_scaled.columns[4:]])
-                infr_time = time.time()-t0
-                
-                # cycle through smoothing sigmas
-                for sg in range(len(sigmas)):
-                    
-                    # smooth and inferences and calculate nictation metrics on
-                    # the training set of the training video
-                    probs_smooth = smooth_probabilities(
-                        probs_train_train, sigmas[sg], fps)
-                    preds_smooth = probabilities_to_predictions(probs_smooth,
-                                                                categories)
-                    preds_smooth_list = separate_list_by_worm(
-                        preds_smooth, wi_train)
-                
-                    ms_train_list = separate_list_by_worm(
-                            ms_train, wi_train)
-                
-                    NRs[sm,t,mt,sg,0] = nict_met.nictation_ratio(
-                        preds_smooth_list, False)
-                    IRs[sm,t,mt,sg,0] = nict_met.initiation_rate(
-                        preds_smooth_list, False)
-                    SRs[sm,t,mt,sg,0] = nict_met.stopping_rate(
-                        preds_smooth_list, False)
-                    accs[sm,t,mt,sg,0] = compare_scores_list(
-                        ms_train_list,preds_smooth_list)
-                    
-                    
-                    # smooth and inferences and calculate nictation metrics on
-                    # the test set of the training video
-                    probs_smooth = smooth_probabilities(
-                        probs_train_val, sigmas[sg], fps)
-                    preds_smooth = probabilities_to_predictions(probs_smooth,
-                                                                categories)
-                    preds_smooth_list = separate_list_by_worm(
-                        preds_smooth, wi_val)
-                    
-                    ms_val_list = separate_list_by_worm(
-                        ms_val, wi_val)
-                
-                    NRs[sm,t,mt,sg,1] = nict_met.nictation_ratio(
-                        preds_smooth_list, False)
-                    IRs[sm,t,mt,sg,1] = nict_met.initiation_rate(
-                        preds_smooth_list, False)
-                    SRs[sm,t,mt,sg,1] = nict_met.stopping_rate(
-                        preds_smooth_list, False)
-                    accs[sm,t,mt,sg,1] = compare_scores_list(
-                        ms_val_list, preds_smooth_list)
-                    
-                    
-                    # smooth and inferences and calculate nictation metrics on
-                    # the separate test video
-                    
-                    probs_smooth = smooth_probabilities(
-                        probs_test_vid, sigmas[sg], fps)
-                    preds_smooth = probabilities_to_predictions(probs_smooth,
-                                                                categories)
-                    preds_smooth_list = separate_list_by_worm(
-                        preds_smooth, df_test_scaled)
-                
-                    ms_test_list = separate_list_by_worm(
-                        ms_test, df_test_scaled)
-                
-                    NRs[sm,t,mt,sg,2] = nict_met.nictation_ratio(
-                        preds_smooth_list, False)
-                    IRs[sm,t,mt,sg,2] = nict_met.initiation_rate(
-                        preds_smooth_list, False)
-                    SRs[sm,t,mt,sg,2] = nict_met.stopping_rate(
-                        preds_smooth_list, False)
-                    accs[sm,t,mt,sg,2] = compare_scores_list(
-                        man_scores_test_vid, preds_smooth_list)
-               
-                
-                # training and inference times do not include the smoothing
-                # time, which is basically negligable
-                times[sm,t,mt,0] = train_time
-                times[sm,t,mt,1] = infr_time
-
-        scaling_progress = sm+1
-        if save_file is not None:
-            with open(save_file, 'wb') as f:
-                pickle.dump([model_types, scaling_methods, sigmas, accs, 
-                             times, NRs, IRs, SRs, man_metrics, 
-                             scaling_progress], f)   
-          
+    print(f"{k} fold cross validation finished, saving results")
+    # save a summary of the results
+    d = {'fold': np.arange(0,k), 'train acc': accs_train,
+         'test acc': accs_test, 'val acc' : accs_val}
+    df_accs = pd.DataFrame(data=d)
     
-    return accs
+    return df_accs
 
 
 
@@ -870,6 +759,18 @@ def compare_scores_list(man_scores, comp_scores):
         same += np.sum(comp_scores[wt]==man_scores[wt])
     return same / total
     
+
+
+def compare_scores(man_scores, comp_scores):
+    '''Takes two lists of worm track scores, compares them, and
+    returns the overall accuracy.'''
+    
+    total = len(comp_scores)
+    comp_scores = np.array(comp_scores).astype(np.int16)
+    man_scores = np.array(man_scores).astype(np.int16)
+    same = np.sum(comp_scores==man_scores)
+    
+    return same / total
 
 
 
@@ -1426,6 +1327,8 @@ def learn_and_predict(X_train, X_val, y_train, y_val,
 
 
 
+
+
 def calculate_features(vid_file):
     
         
@@ -1704,13 +1607,14 @@ def Junho_Lee_scores(scores, activity, fps = 5, assume_active = True):
 if __name__ == '__main__':
     try:
         
-        train_dir = r'C:\Users\PDMcClanahan\Dropbox\Temmerman_Lab\data\test_behavior_training_set'
+        train_dir = r'E:\behavior_training_Celegans_vid_cropped_scaled'
         algorithm = 'random forest'
         scaling_method = 'whiten'
-        val_dir = None
-        results = five_fold_cross_validation(
-            train_dir, algorithm, scaling_method, val_dir = None)
+        val_dir = ''
+ 
         
+        results =  k_fold_cross_validation(train_dir, algorithm, 
+                                           scaling_method, val_dir, 5)
         # vid_dir = r"D:\Data_flp_7_updated"
         # file_list = sorted(os.listdir(vid_dir))
         # for f in file_list[:]:

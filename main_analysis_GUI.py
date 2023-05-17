@@ -272,6 +272,8 @@ def tracking_GUI():
         for t in trackers:
             try:
                 t.calculate_features()
+                print('Done calculating features!')
+
             except:
                 import pdb
                 import sys

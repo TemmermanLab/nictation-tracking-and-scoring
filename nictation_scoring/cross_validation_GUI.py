@@ -38,7 +38,7 @@ def cross_validation_GUI():
     train_dir = []
     test_dir = []
     algorithm = []
-    
+    k = 5
     
     xval_GUI = tk.Tk()
     
@@ -94,12 +94,14 @@ def cross_validation_GUI():
     
     def run_button():
         train_dir = train_entry.get()
-        val_dir = train_entry.get()
+        val_dir = val_entry.get()
         scale_meth = scale_meth_strv.get()
         alg = alg_strv.get()
-        accs = \
-            nm.five_fold_cross_validation(train_dir, val_dir, alg, scale_meth)
-                                    
+        df = \
+            nm.k_fold_cross_validation(train_dir, alg, scale_meth, val_dir,
+                                          k)
+        df.rename(columns = {'val acc':'val acc ('+val_dir+')'}, inplace = True)
+        df.to_csv(f"{train_dir}//{alg}_{scale_meth}_{k}_fold_cross_validation_accuracies.csv",index = False)                     
         
     def exit_button():
         xval_GUI.destroy()
