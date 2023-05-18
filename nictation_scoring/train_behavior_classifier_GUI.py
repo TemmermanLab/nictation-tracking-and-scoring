@@ -73,8 +73,9 @@ def train_behavior_classifier_GUI():
         model, scaler = nm.train_behavior_classifier(train_dir,
                                            scale_meth, alg)
                 
-        model_file = train_dir+'\\'+datetime.now().strftime("%Y%m%d%H%M%S")+\
-            '_'+alg+'_'+scale_meth+'.pkl'
+        # model_file = train_dir+'\\'+datetime.now().strftime("%Y%m%d%H%M%S")+\
+        #     '_'+alg+'_'+scale_meth+'.pkl'
+        model_file = train_dir+'\\'+alg+'_'+scale_meth+'.pkl'
         with open(model_file, 'wb') as f:
             pickle.dump([model, scaler], f)
         print('Trained model and scaler saved as '+model_file)

@@ -227,7 +227,7 @@ def train_behavior_classifier(train_data_dir, scaling_method, algorithm):
     
     
     model = fit_model(df_scaled[df_scaled.columns[5:]], \
-              df_scaled['manual_behavior_label'])
+              df_scaled['manual_behavior_label'], algorithm)
     
     return model, scaler
 
