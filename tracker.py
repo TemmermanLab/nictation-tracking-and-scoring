@@ -59,7 +59,7 @@ import centerline_module as cm
 # for feature calculation and scoring
 sys.path.append(os.path.split(__file__)[0]+'\\nictation_scoring')
 import nictation_module as nm
-
+import nictation_metrics as nmet
 
 class Tracker:
     
@@ -522,10 +522,53 @@ class Tracker:
         nm.score_behavior(feature_file, behavior_model_file, behavior_sig, 
                           fps, save_path)
         
+        self.behavior_summary_video()
+        self.write_behavior_summary(fps)
+        
         print('Scores saved in ' + save_path + \
               '\computer_behavior_scores.csv')
         
 
+    def write_behavior_summary(self, fps):
+        '''Outputs a summary of behavior: # tracks, duration scored, duration
+        recumbence, duration nictation, NR, IR, SR, TR, duration. It only
+        considers worm frames that made it to scoring, not those that were
+        excluded for having bad centerlines or being too close to the 
+        beginning or end of a track.'''
+        
+        
+        # load manual scores
+        score_file = self.save_path + '\\' + 'computer_behavior_scores.csv'
+        df = pd.read_csv(score_file)
+        
+        num_tracks = len(np.unique(df['worm']))                 
+        time_recumb = len(df[df['pred. behavior']==0])/fps
+        time_nict = len(df[df['pred. behavior']==1])/fps
+        time_other = len(df)/fps - (time_recumb + time_nict) 
+        
+        score_list_all = list(df['pred. behavior'])
+        score_list_by_worm = nm.separate_list_by_worm(score_list_all, df)
+        
+        NR = nmet.nictation_ratio(score_list_by_worm,True,True)
+        IR = nmet.initiation_rate(score_list_by_worm,True,fps,True)
+        SR = nmet.stopping_rate(score_list_by_worm,True,fps,True)
+        TR = nmet.transition_rate(score_list_by_worm,True,fps,True)
+        dur,bouts = nmet.nictation_duration(score_list_by_worm,True,False,fps) 
+        
+        desc = ['# tracks','total recumbence (s)','total nictation (s)',
+                'other (s)','nictation ratio','initiation rate (Hz)',
+                'stopping rate (Hz)','transition rate (Hz)',
+                'nictation duration (s)','complete bouts']
+        
+        values = [num_tracks, time_recumb, time_nict,
+                  time_other, NR, IR, SR, TR, dur, len(bouts)]
+        
+        d = {'Description' : desc, 'Value' : values}
+        df_save = pd.DataFrame(d)
+        
+        df_save.to_csv(self.save_path+'//scoring_summary.csv', index = False)
+
+    
     def behavior_summary_video(self, out_scale = 1.0):
         '''Creates a compressed showing the worms and their scored behavior'''
         

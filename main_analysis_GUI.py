@@ -172,7 +172,6 @@ def tracking_GUI():
                 t.track()
                 t.calculate_features()
                 t.score_behavior()
-                t.behavior_summary_video()
                 return dummy
             
             v_files = []
@@ -250,7 +249,6 @@ def tracking_GUI():
                 if keep_going:
                     t.calculate_features()
                     t.score_behavior()
-                    t.behavior_summary_video()
         
         print('WARNING: tracking objects deleted')
             #update_vid_inf(trackers)
@@ -288,7 +286,7 @@ def tracking_GUI():
     def score_button():
         for t in trackers:
             t.score_behavior()
-            t.behavior_summary_video()
+            
          
     def exit_button():
         nonlocal tracking_GUI

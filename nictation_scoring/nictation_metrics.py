@@ -197,7 +197,8 @@ def transition_rate(scores, only_active = True, fps = 5, binary = True):
 
 
 def nictation_duration(scores, exclude_partial_episodes = False, 
-                       only_active = True, fps = 5):
+                       only_active = False, fps = 5, binary = True):
+    
     '''Nictation duration is the average duration of nictation bouts.  This
     function returns the average duration of a nictation bout as well as all
     the durations of all the bouts counted.  If <include_partial_episodes> is
@@ -207,6 +208,17 @@ def nictation_duration(scores, exclude_partial_episodes = False,
     is problematic because, among other reasons, many bouts outlast the period
     of tracking, and this is more likely to happen with longer bouts.'''
     
+    '''Not exclusing partial episodes, only looking at active worms, and non
+    binary scoring are no longer tested and will be removed'''
+    
+
+    if binary:
+        rec = (0,)
+        nic = (1,)
+    else:
+        rec = (0,1)
+        nic = (2,3)
+
     if exclude_partial_episodes and not only_active:
         episode_durs = []
         
@@ -215,11 +227,11 @@ def nictation_duration(scores, exclude_partial_episodes = False,
             
             for f in range(1,len(ws)):
                 if search:
-                    if ws[f-1] in (0,1) and ws[f] in (2,3):
+                    if ws[f-1] in rec and ws[f] in nic:
                         search = False
                         dur = 1
                 else:
-                    if ws[f-1] in (2,3) and ws[f] in (2,3):
+                    if ws[f-1] in nic and ws[f] in nic:
                         dur += 1
                     else:
                         episode_durs.append(dur)
@@ -229,9 +241,9 @@ def nictation_duration(scores, exclude_partial_episodes = False,
             episode_durs = np.array(episode_durs) * (1/fps)
             nict_dur = np.mean(episode_durs)
         else:
-            nict_dur == np.nan
+            nict_dur = np.nan
             episode_durs = np.nan
-            
+
         return nict_dur, episode_durs
             
     
@@ -259,7 +271,7 @@ def nictation_duration(scores, exclude_partial_episodes = False,
             episode_durs = np.array(episode_durs) * (1/fps)
             nict_dur = np.mean(episode_durs)
         else:
-            nict_dur == np.nan
+            nict_dur = np.nan
             episode_durs = np.nan
         
         return nict_dur, episode_durs
