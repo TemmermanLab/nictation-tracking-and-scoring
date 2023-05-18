@@ -47,7 +47,6 @@ def save_params_csv(params, save_path, save_name = 'tracking_parameters'):
 def load_parameter_csv(csv_filename):
     
     parameters = dict()
-   
     with open(csv_filename, newline="") as csv_file: 
         parameters_reader = csv.reader(csv_file, delimiter=';',
                                        quotechar='"')

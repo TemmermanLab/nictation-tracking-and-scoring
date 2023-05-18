@@ -173,7 +173,25 @@ class Tracker:
         # assumes same aspect ratio
         self.scale_factor = self.model_scale[0]/self.dimensions[0]
         
-        # load centroids, centerlines, parameters, etc from prior tracking
+        # load centroids,first frames from prior tracking
+        if os.path.isfile(self.save_path+'\\centroids.csv'):
+            print('Re-loading centroids and first frames')
+            centroids_file = self.save_path+'\\centroids.csv'
+            self.centroids, self.first_frames = dm.load_centroids_csv(
+                centroids_file)
+        else:
+            pass
+        
+        # load centerlines from prior tracking
+        if os.path.isdir(self.save_path+'\\centerlines'):
+            print('Re-loading centerlines')
+            centerlines_path = self.save_path+'\\centerlines'
+            self.centerlines, self.centerline_flags = dm.load_centerlines_csv(
+                centerlines_path)
+        else:
+            pass
+        
+        
         Tracker.num_vids += 1
     
     
@@ -508,6 +526,132 @@ class Tracker:
               '\computer_behavior_scores.csv')
         
 
+    def behavior_summary_video(self, out_scale = 1.0):
+        '''Creates a compressed showing the worms and their scored behavior'''
+        
+        
+        # load manual scores
+        score_file = self.save_path + '\\' + 'computer_behavior_scores.csv'
+        df = pd.read_csv(score_file)
+        
+        
+        # set up video object
+        out_name = self.save_path + '\\' + \
+            os.path.splitext(self.vid_name)[0] + '_behavior.avi'
+        out_w = int(self.vid.get(cv2.CAP_PROP_FRAME_WIDTH) * out_scale)
+        out_h = int(self.vid.get(cv2.CAP_PROP_FRAME_HEIGHT) * out_scale)
+        v_out = cv2.VideoWriter(out_name,
+            cv2.VideoWriter_fourcc('M','J','P','G'),
+            self.vid.get(cv2.CAP_PROP_FPS), (out_w,out_h), 1)
+        
+        # setup font
+        f_face = cv2.FONT_HERSHEY_SIMPLEX
+        f_scale = 1.0
+        f_thickness = 1
+        f_color = (0,0,0)
+        
+        # loop through frames
+        indices = np.linspace(0,self.num_frames-1,int(self.num_frames),
+                              dtype = 'uint16'); i = 0;
+        for i in indices:
+            print('Writing frame '+str(int(i+1))+' of '+ \
+                  str(int(self.num_frames)))
+            
+            # determine which tracks are present in the frame
+            numbers = []
+            centroids = []
+            centerlines = []
+            centerline_flags = []
+            centerline_flags_unfixed = []
+            behavior_scores = []
+            text_colors = []
+            for w in range(len(self.centroids)):
+                if i in np.arange(self.first_frames[w],
+                                 self.first_frames[w]+len(self.centroids[w])):
+                    bs = df[(df['worm']==w) & (df['frame']==i)]['pred. behavior']
+                    if len(bs) == 0:
+                        behavior_scores.append(-2)
+                        text_colors.append((0,0,0))
+                    else:
+                        behavior_scores.append(int(bs))
+                        if int(bs)==0:
+                            text_colors.append((255,0,0))
+                        elif int(bs)==1:
+                            text_colors.append((0,255,0))
+                        else:
+                            text_colors.append((0,0,0))
+                    numbers.append(w)
+                    centroids.append(
+                        self.centroids[w][i-self.first_frames[w]])
+                    if self.metaparameters['centerline_method'] != 'none':
+                        centerlines.append(
+                            self.centerlines[w][i-self.first_frames[w]])
+                        centerline_flags.append(
+                            self.centerline_flags[w][i-self.first_frames[w]])
+                        
+            # load frame
+            self.vid.set(cv2.CAP_PROP_POS_FRAMES, i)
+            ret,img = self.vid.read(); img = cv2.cvtColor(img, 
+                                                          cv2.COLOR_BGR2GRAY)
+            img_save = np.stack((img,img,img),2)
+            
+            for w in range(len(numbers)):
+                text1 = str(numbers[w])
+                if behavior_scores[w] == -2:
+                    text2 = 'not scored'
+                elif behavior_scores[w] == -1:
+                    text2 = 'censored'
+                elif behavior_scores[w] == 0:
+                    text2 = 'recumbent'
+                elif behavior_scores[w] == 1:
+                    text2 = 'nictating'
+                else:
+                    text2 = 'unknown'
+                
+                text_size1 = cv2.getTextSize(text1, f_face, f_scale,
+                                            f_thickness)[0]
+                text_pos1 = copy.copy(centroids[w]) # avoid changing objs below
+                text_pos1[0] = text_pos1[0]-text_size1[0]/2 # x centering
+                text_pos1[1] = text_pos1[1] + 35
+                text_pos1 = tuple(np.uint16(text_pos1))
+                img_save = cv2.putText(img_save,text1,text_pos1,f_face,f_scale,
+                                       f_color,f_thickness,cv2.LINE_AA)
+                
+                text_size2 = cv2.getTextSize(text2, f_face, f_scale,
+                                            f_thickness)[0]
+                text_pos2 = copy.copy(centroids[w]) # avoid changing objs below
+                text_pos2[0] = text_pos2[0]-text_size2[0]/2 # x centering
+                text_pos2[1] = text_pos2[1] + 70
+                text_pos2 = tuple(np.uint16(text_pos2))
+                img_save = cv2.putText(img_save,text2,text_pos2,f_face,f_scale,
+                                       text_colors[w],f_thickness,cv2.LINE_AA)
+                # cline
+                if self.metaparameters['centerline_method'] != 'none':
+                    pts = np.int32(centerlines[w][-1])
+                    pts = pts.reshape((-1,1,2))
+                    
+                    if behavior_scores[w] == 0:
+                        img_save = cv2.polylines(img_save, pts, True,
+                                                 (255,0,0), 3)
+                        # img_save = cv2.circle(img_save, tuple(pts[0][0]),
+                        #                       5, (255,0,0), -1)
+                    elif behavior_scores[w] == 1:
+                        img_save = cv2.polylines(img_save, pts, True,
+                                                 (0,255,0), 3)
+                        # img_save = cv2.circle(img_save, tuple(pts[0][0]),
+                        #                       5, (0,255,0), -1)
+                    else:
+                        img_save = cv2.polylines(img_save, pts, True,
+                                                 (0,0,0), 3)
+                        # img_save = cv2.circle(img_save, tuple(pts[0][0]),
+                        #                       5, (0,0,0), -1)
+                            
+            img_save = cv2.resize(img_save, (out_w,out_h),
+                                  interpolation = cv2.INTER_AREA)
+            
+            v_out.write(img_save)
+        print('DONE')
+        v_out.release()
 
     @staticmethod
     def get_background(vid, bkgnd_numf):
