@@ -257,10 +257,6 @@ def fit_model(x,y,algorithm):
     
     return model
     
-    
-
-
-
 
 
 # @ignore_warnings(category=ConvergenceWarning)
@@ -400,6 +396,48 @@ def k_fold_cross_validation(train_dir, algorithm, scaling_method,
     return df_accs
 
 
+
+def test_smoothing(data_dir, model_file, sig_max, sig_inc, fps = 5):
+    '''Smoothes the results of <model_file> applied to scoring the behavior
+    data in <data_dir> by sigma = 0 to <sig_max> in increments of <sig_inc>'''
+    
+    # testing
+    data_dir = r'E:\behavior_training_Celegans_vid_cropped_scaled'
+    model_file = r'E:\behavior_training_Celegans_vid_cropped_scaled\decision tree_variance.pkl'
+    sig_max = 0.5
+    sig_inc = 0.1
+    fps = 5
+    
+    sigs = np.arange(0,sig_max,sig_inc)
+    
+    # calculate raw scores
+    raw_scores
+    
+    # load manual scores
+    
+    
+    # calculate manual nictation metrics
+    
+    
+    accs = []
+    NRs = []
+    IRs = []
+    SRs = []
+    TRs = []
+    for s in sigs:
+        pass
+    
+    # normalize to manual values
+    
+    
+    # create summary dataframe
+    
+    
+    # create summary plot
+    
+    
+    return df, fig
+    
 
 # deprecated
 # @ignore_warnings(category=ConvergenceWarning)
