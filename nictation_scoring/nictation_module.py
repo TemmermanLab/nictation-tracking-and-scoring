@@ -53,7 +53,7 @@ from sklearn.metrics import confusion_matrix
 
 # sometimes there are convergence warnings for some models, e.g. logistic
 # regression. Rather than wait longer, I suppress the warnings.
-from sklearn.utils.testing import ignore_warnings
+# from sklearn.utils.testing import ignore_warnings
 from sklearn.exceptions import ConvergenceWarning
 
 # add needed module locations to path
@@ -263,7 +263,7 @@ def fit_model(x,y,algorithm):
 
 
 
-@ignore_warnings(category=ConvergenceWarning)
+# @ignore_warnings(category=ConvergenceWarning)
 def k_fold_cross_validation(train_dir, algorithm, scaling_method,
                                val_dir = None, k = 5):
     '''Performs five fold cross validation of using the <algorithm>, 
@@ -396,7 +396,7 @@ def k_fold_cross_validation(train_dir, algorithm, scaling_method,
 
 
 # deprecated
-@ignore_warnings(category=ConvergenceWarning)
+# @ignore_warnings(category=ConvergenceWarning)
 def evaluate_models_x_fold_cross_val(vid_file_train, vid_file_test, 
                                      **kwargs):
     '''Performs x-fold cross validation of the specified models with the
