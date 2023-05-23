@@ -86,11 +86,11 @@ def combine_and_prepare_man_scores_and_features(vid_file, score_file = None,
     
     # load manual scores
     if score_file is None:
-        man_scores_lst = load_manual_scores_csv(
+        man_scores_lst, vig_names = load_manual_scores_csv(
             os.path.splitext(vid_file)[0] + \
             r'_tracking/manual_nictation_scores.csv', simplify)
     else:
-        man_scores_lst = load_manual_scores_csv(score_file, simplify)
+        man_scores_lst, vig_names = load_manual_scores_csv(score_file, simplify)
     
     # load features
     if not alt_feat:
@@ -202,37 +202,25 @@ def train_behavior_classifier(train_data_dir, scaling_method, algorithm):
     # algorithm = 'random forest'
     
     
-    # load features
-    feature_file = train_data_dir + '//nictation_features.csv'
-    df = pd.read_csv(feature_file)
+    # load and combine features and manual scores
+    df = combine_features_and_manual_scores(train_data_dir)
+    
+    # remove censored, nan/inf-containing, and flagged centerline worm-frames
+    df_masked = clean_dataset(df)
     
     
-    # load manual scores    
-    manual_score_file =  train_data_dir + '//manual_nictation_scores.csv'
-    man_scores_lst = load_manual_scores_csv(manual_score_file, 
-                                            simplify = False)
-    man_scores = []
-    for scr_w in man_scores_lst:
-        man_scores += list(scr_w)
-    df.insert(2,'manual_behavior_label',man_scores)
-    
-    
-    # remove NaN values
-    df_masked, ix = nan_inf_mask_dataframe(df)
-    
-
     # scale data
     df_scaled, scaler = scale_training_features(df_masked, scaling_method,
-                                            df_masked.columns[5:])
+                                            df_masked.columns[6:])
     
-    
-    model = fit_model(df_scaled[df_scaled.columns[5:]], \
+    model = fit_model(df_scaled[df_scaled.columns[6:]], \
               df_scaled['manual_behavior_label'], algorithm)
     
     return model, scaler
 
 
 def fit_model(x,y,algorithm):
+    
     # initialize model, note GNB has no random state option
     if algorithm == 'logistic regression':
         model = LogisticRegression(max_iter = 1000, random_state = 0)
@@ -270,37 +258,22 @@ def k_fold_cross_validation(train_dir, algorithm, scaling_method,
     the raw classifier output. Censored frames and flagged centerlines are not
     considered.'''
     
-    fps = 5
+    fps = 5   
     
-    def prep_scores(data_dir):
-        
-        # load training / testing manual scores and features
-        feature_file = data_dir + '//nictation_features.csv'
-        df = pd.read_csv(feature_file)
-        
-        
-        # load manual scores    
-        manual_score_file =  data_dir + '//manual_nictation_scores.csv'
-        man_scores_lst = load_manual_scores_csv(manual_score_file,
-                                                simplify = False)
-        man_scores = []
-        for scr_w in man_scores_lst:
-            man_scores += list(scr_w)
-        df.insert(5,'manual_behavior_label',man_scores)
-        
-        
-        # remove censored, nan/inf-containing, and flagged centerline worm-frames
-        df_masked = clean_dataset(df)
-        
-
-        return df_masked
+    # load and combine nictation features and manual scores    
+    df_train_test = combine_features_and_manual_scores(train_dir)
     
-    df_train_test = prep_scores(train_dir)
+    # remove censored, nan/inf-containing, and flagged centerline worm-frames
+    df_train_test = clean_dataset(df_train_test)
+        
+    
     if val_dir != '':
-        df_val = prep_scores(val_dir)
+        df_val = combine_features_and_manual_scores(val_dir)
+        df_val = clean_dataset(df_val)
 
     
     # determine the group indices for x-fold cross validation
+    # this step is too slow
     vid_names_fold = []
     worms_fold = []
     worm_strings = []
@@ -358,13 +331,13 @@ def k_fold_cross_validation(train_dir, algorithm, scaling_method,
         model = fit_model(df_train_scaled[df_train_scaled.columns[6:]], \
             df_train_scaled['manual_behavior_label'],algorithm)
         
-            
+        
         # test classfier on the training and testing data
         probs_train = model.predict_proba(df_train_scaled[df_train_scaled.columns[6:]])
         probs_train_smooth = smooth_probabilities(probs_train,0,fps)
-        preds_train = probabilities_to_predictions(probs_train,[0,1])
+        preds_train = probabilities_to_predictions(probs_train_smooth,[0,1])
         accs_train.append(compare_scores(
-                        df_train['manual_behavior_label'],preds_train))
+                        df_train_scaled['manual_behavior_label'],preds_train))
         
         
         probs_test = model.predict_proba(df_test_scaled[df_test_scaled.columns[6:]])
@@ -395,6 +368,42 @@ def k_fold_cross_validation(train_dir, algorithm, scaling_method,
     
     return df_accs
 
+
+def combine_features_and_manual_scores(data_dir):
+    
+    # load training / testing manual scores and features
+    feature_file = data_dir + '//nictation_features.csv'
+    manual_score_file =  data_dir + '//manual_nictation_scores.csv'
+    
+    
+    df = pd.read_csv(feature_file)
+    man_scores_lst, vig_names = load_manual_scores_csv(manual_score_file,
+                                            simplify = False)
+        
+    # load manual scores
+    man_vid = []
+    man_worm = []
+    man_frame = []
+    man_score = []
+    for i,msv in enumerate(man_scores_lst):
+        man_score += list(msv)
+        man_worm += [int(vig_names[i][vig_names[i].rfind('w')+1:])]*len(msv)
+        man_vid += [vig_names[i][:vig_names[i].rfind('_')]]*len(msv)
+        man_frame += list(np.arange(0,len(msv)))
+    
+    man_score = list(map(int,man_score))
+        
+    d_man_scores = {'vid_name':man_vid,
+                    'worm':man_worm,
+                    'manual_behavior_label':man_score,
+                    'frame':man_frame
+                    }
+    df_man_scores = pd.DataFrame(d_man_scores)
+    df2 = pd.merge(df, df_man_scores, how = 'left', on=["vid_name","worm","frame"])
+    column_to_move = df2.pop("manual_behavior_label")
+    df2.insert(5, "manual_behavior_label", column_to_move)
+    
+    return df2
 
 
 def test_smoothing(data_dir, model_file, sig_max, sig_inc, fps = 5):
@@ -1224,6 +1233,8 @@ def load_manual_scores_csv(csv_file, simplify = True):
     one array per worm.  If <simplify> is True, then it changes nictation
     scores from quiescent / crawling / waving / standing to recumbent / 
     nictating'''
+    
+    
     scores_arr = []
     blank = np.nan
     rc = 0
@@ -1231,15 +1242,24 @@ def load_manual_scores_csv(csv_file, simplify = True):
     with open(csv_file, newline='') as csvfile:
         csv_reader = csv.reader(csvfile, delimiter=',',quotechar='"')
         for row in csv_reader:
-            score_row = np.empty(len(row))
-            for w in range(len(score_row)):
+            if rc > 0:
+                score_row = np.empty(len(row))
+            else:
+                score_row = np.empty(len(row),dtype=np.dtype('U1000'))
+                
+            for w in range(len(score_row)):    
+                
                 if rc > 0:
                     
                     if len(row[w]) == 0:
                         score_row[w] = blank
                     else:
                         score_row[w] = int(row[w])
+                else:
+                    score_row[w] = row[w]
                     
+            if rc == 0:
+                vignette_names = copy.copy(score_row)
             if rc == 1:
                 scores_arr = score_row
             elif rc > 1:
@@ -1257,7 +1277,7 @@ def load_manual_scores_csv(csv_file, simplify = True):
     for w in reversed(range(len(scores_arr))):
         scores_lst.append(scores_arr[w][np.where(~np.isnan(scores_arr[w]))])
     
-    return scores_lst
+    return scores_lst, vignette_names
 
 
 # returns a dataframe with       
