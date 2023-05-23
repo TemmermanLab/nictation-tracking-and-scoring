@@ -93,6 +93,7 @@ def cross_validation_GUI():
         
     
     def run_button():
+        print(f'Running {k} fold cross validation...')
         train_dir = train_entry.get()
         val_dir = val_entry.get()
         scale_meth = scale_meth_strv.get()
@@ -102,7 +103,7 @@ def cross_validation_GUI():
                                           k)
         df.rename(columns = {'val acc':'val acc ('+val_dir+')'}, inplace = True)
         df.to_csv(f"{train_dir}//{alg}_{scale_meth}_{k}_fold_cross_validation_accuracies.csv",index = False)                     
-        
+        print(f'Results saved as {alg}_{scale_meth}_{k}_fold_cross_validation_accuracies.csv in {train_dir}')
     def exit_button():
         xval_GUI.destroy()
         xval_GUI.quit()

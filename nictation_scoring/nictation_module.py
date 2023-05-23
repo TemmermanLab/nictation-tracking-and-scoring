@@ -346,11 +346,16 @@ def k_fold_cross_validation(train_dir, algorithm, scaling_method,
         
 
         # scale data
-        df_train_scaled, scaler = scale_training_features(df_train, 
-                                    scaling_method, df_train.columns[6:])
-        df_test_scaled = copy.copy(df_test)
-        df_test_scaled[df_test_scaled.columns[6:]] = scaler.transform(
-            df_test_scaled[df_test_scaled.columns[6:]])
+        if scaling_method != 'none':
+            df_train_scaled, scaler = scale_training_features(df_train, 
+                                        scaling_method, df_train.columns[6:])
+            df_test_scaled = copy.copy(df_test)
+            df_test_scaled[df_test_scaled.columns[6:]] = scaler.transform(
+                df_test_scaled[df_test_scaled.columns[6:]])
+        else:
+            scaler = None
+            df_train_scaled = copy.copy(df_train)
+            df_test_scaled = copy.copy(df_test)
         
         
         # train classifier
@@ -375,8 +380,9 @@ def k_fold_cross_validation(train_dir, algorithm, scaling_method,
         # if provided, test classifier on validation data
         if val_dir != '':
             df_val_scaled = copy.copy(df_val)
-            df_val_scaled[df_val_scaled.columns[6:]] = scaler.transform(
-            df_val_scaled[df_val_scaled.columns[6:]])
+            if scaler is not None:
+                df_val_scaled[df_val_scaled.columns[6:]] = scaler.transform(
+                df_val_scaled[df_val_scaled.columns[6:]])
             probs_val = model.predict_proba(df_val_scaled[df_val_scaled.columns[6:]])
             probs_val_smooth = smooth_probabilities(probs_val,0,fps)
             preds_val = probabilities_to_predictions(probs_val,[0,1])
