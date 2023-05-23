@@ -161,6 +161,14 @@ class Tracker:
             }
             #self.save_params_csv('tracking_parameters')
         
+        # check for the existence of the mask R-CNN file
+        if not os.path.exists(self.parameters['mask_RCNN_file']):
+            root = tk.Tk()
+            self.parameters['mask_RCNN_file'] = tk.filedialog.askopenfilename(
+                initialdir = os.path.split(__file__)[0]+'\\nictation_scoring', 
+                title = "Select a mask R-CNN file (.pt) for tracking...")
+            root.destroy()
+        
         
         self.vid = cv2.VideoCapture(self.vid_path+'//'+self.vid_name)
         self.num_frames = int(self.vid.get(cv2.CAP_PROP_FRAME_COUNT))
