@@ -5,10 +5,7 @@ import numpy as np
 import copy
 import time
 import torch
-try:
-    import torch._six
-except:
-    from torch import inf
+import torch._six
 
 from pycocotools.cocoeval import COCOeval
 from pycocotools.coco import COCO
@@ -252,24 +249,12 @@ def loadRes(self, resFile):
 
     # print('Loading and preparing results...')
     # tic = time.time()
-    # import pdb; pdb.set_trace()
-    try:
-        try:
-            if isinstance(resFile, torch._six.string_classes):
-                anns = json.load(open(resFile))
-            elif type(resFile) == np.ndarray:
-                anns = self.loadNumpyAnnotations(resFile)
-            else:
-                anns = resFile
-        except:
-            if isinstance(resFile, torch.inf.string_classes):
-                anns = json.load(open(resFile))
-            elif type(resFile) == np.ndarray:
-                anns = self.loadNumpyAnnotations(resFile)
-            else:
-                anns = resFile
-    except:
-       anns = resFile 
+    if isinstance(resFile, torch._six.string_classes):
+        anns = json.load(open(resFile))
+    elif type(resFile) == np.ndarray:
+        anns = self.loadNumpyAnnotations(resFile)
+    else:
+        anns = resFile
     assert type(anns) == list, 'results in not an array of objects'
     annsImgIds = [ann['image_id'] for ann in anns]
     assert set(annsImgIds) == (set(annsImgIds) & set(self.getImgIds())), \
