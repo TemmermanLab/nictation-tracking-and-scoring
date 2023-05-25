@@ -247,8 +247,8 @@ if train:
         
     # RUN FOR 200 EPOCHS
     # let's train it for 200 epochs
-    print('WARNING: reset epochs to 200!')
-    num_epochs = 20
+    # print('WARNING: reset epochs to 200!')
+    num_epochs = 200
     fuse = 20
     losses = []
     lrs = []

@@ -568,8 +568,14 @@ class Tracker:
                 'stopping rate (Hz)','transition rate (Hz)',
                 'nictation duration (s)','complete bouts']
         
-        values = [num_tracks, time_recumb, time_nict,
-                  time_other, NR, IR, SR, TR, dur, len(bouts)]
+
+        
+        try:        
+            values = [num_tracks, time_recumb, time_nict,
+                      time_other, NR, IR, SR, TR, dur, len(bouts)]
+        except:
+            values = [num_tracks, time_recumb, time_nict,
+                      time_other, NR, IR, SR, TR, dur, 0]
         
         d = {'Description' : desc, 'Value' : values}
         df_save = pd.DataFrame(d)

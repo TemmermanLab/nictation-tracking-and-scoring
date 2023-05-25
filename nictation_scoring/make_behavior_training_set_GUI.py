@@ -22,9 +22,11 @@ import cv2
 import pandas as pd
 import numpy as np
 
-from pathlib import Path
-home = str(Path.home())
-sys.path.append(home+r'\Dropbox\Temmerman_Lab\code\tracking-and-scoring-nictation')
+
+import sys
+# sys.path.append(os.path.split(__file__)[0]+'\\helper_functions')
+sys.path.append(os.path.split(__file__)[0])
+
 import data_management_module as dm
 
 
