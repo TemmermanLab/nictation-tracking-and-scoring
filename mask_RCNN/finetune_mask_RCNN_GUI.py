@@ -37,7 +37,7 @@ os.environ['KMP_DUPLICATE_LIB_OK']='True' # prevents crash when using pytorch an
 # Add the helper function directory to the path
 import sys
 sys.path.append(os.path.split(__file__)[0]+'\\helper_functions')
-import pdb; pdb.set_trace()
+
 
 
 # Get the path containing the training set
@@ -53,8 +53,8 @@ root.destroy()
 model_file = dataset_folder + r'\mask_rcnn.pt'
 scale_factor = 1.0
 
-train = False
-test_inference = True
+train = True
+test_inference = False
 
 
 class WormsOnMicrodirt(torch.utils.data.Dataset):
